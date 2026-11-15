@@ -1,6 +1,6 @@
 """Unit tests for CodeActExecutor execution and tool auto-dispatching."""
 
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 from anima import Context
@@ -227,6 +227,15 @@ async def test_codeact_tool_fallback_signature_and_content_error(ctx: Context) -
 
 
 def test_codeact_registry_fallback_variations() -> None:
+    # 0. tools service with _registry
+    class MockToolsWithRegistry:
+        _registry: ClassVar[dict[str, Any]] = {"r1": None}
+
+    ctx0 = Context()
+    ctx0.tools = MockToolsWithRegistry()
+    ex0 = CodeActExecutor(ctx0)
+    assert ex0.get_registered_tool_names() == {"r1"}
+
     # 1. tools service without _registry but with list_all
     class MockToolsWithListAll:
         def list_all(self) -> list[Any]:

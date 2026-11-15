@@ -10,6 +10,7 @@ from magitech_harness.components.layers import ConfigLayer
 from magitech_harness.session.events import ToolCallData
 from magitech_harness.shell.service import ShellResult
 from magitech_harness.system_prompt.service import SystemPromptService
+from magitech_harness.tools.native_executor import apply as apply_native_executor
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.bridges.skills.service import SkillsBridgeService
@@ -38,8 +39,9 @@ def _create_dummy_skill(
 
 async def test_skills_service_discovery_and_catalog(tmp_path: Path) -> None:
     ctx = Context()
-    ctx.use(ToolService)
     ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    ctx.use(apply_native_executor)
     await ctx.flush()
 
     service = SkillsBridgeService(ctx)
@@ -63,6 +65,7 @@ async def test_skills_service_discovery_and_catalog(tmp_path: Path) -> None:
 
 async def test_skills_service_activate_tool(tmp_path: Path) -> None:
     ctx = Context()
+    ctx.use(SystemPromptService)
     ctx.use(ToolService)
     await ctx.flush()
 
@@ -97,6 +100,7 @@ async def test_skills_service_activate_tool(tmp_path: Path) -> None:
 
 async def test_skills_service_run_script_tool(tmp_path: Path) -> None:
     ctx = Context()
+    ctx.use(SystemPromptService)
     ctx.use(ToolService)
     await ctx.flush()
 

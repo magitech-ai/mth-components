@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from anima import Context
 from magitech_harness.session.events import ToolCallData
+from magitech_harness.system_prompt.service import SystemPromptService
 from magitech_harness.tools.definition import define_tool
 from magitech_harness.tools.service import ToolService
 
@@ -100,6 +101,7 @@ def test_truncate_tail_short_and_exceeded() -> None:
 async def test_truncation_component_waterfall_integration() -> None:
     """Verifies truncation component attaches to tools/post-execute waterfall."""
     ctx = Context()
+    ctx.use(SystemPromptService)
     ctx.use(ToolService)
     ctx.use(apply, max_lines=2, max_bytes=50)
     await ctx.flush()

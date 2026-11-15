@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 from anima import Context
 from magitech_harness.shell.service import LocalShellService
+from magitech_harness.system_prompt.service import SystemPromptService
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.tools.bash.bash import handle_bash
@@ -169,6 +170,7 @@ async def test_handle_bash_spill_oserror_suppressed(tmp_path: Path) -> None:
 async def test_bash_component_integration() -> None:
     """Verifies mounting bash component onto Context."""
     ctx = Context()
+    ctx.use(SystemPromptService)
     ctx.use(LocalShellService)
     ctx.use(ToolService)
     ctx.use(apply)

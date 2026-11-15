@@ -239,7 +239,9 @@ async def test_end_to_end_marketplace_streaming_and_compaction(
     # message for the shadowed range.
     msgs = session.derive_messages()
     assert len(msgs) >= 2
-    assert msgs[0]["content"] == [{"type": "text", "text": "Run streaming echo"}]
+    user_msgs = [m for m in msgs if m.get("role") == "user"]
+    assert user_msgs
+    assert user_msgs[0]["content"] == [{"type": "text", "text": "Run streaming echo"}]
 
 
 @pytest.mark.asyncio

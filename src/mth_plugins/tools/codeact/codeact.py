@@ -252,6 +252,10 @@ class CodeActExecutor:
         registry = getattr(tools_svc, "_registry", None)
         if isinstance(registry, dict):
             names = set(registry.keys())
+        elif hasattr(tools_svc, "definitions"):
+            names = {d["name"] for d in tools_svc.definitions()}
+            legacy = getattr(tools_svc, "_legacy_tools", {})
+            names.update(legacy.keys())
         else:
             all_tools = getattr(tools_svc, "list_all", None)
             names = {t.name for t in all_tools()} if callable(all_tools) else set()
