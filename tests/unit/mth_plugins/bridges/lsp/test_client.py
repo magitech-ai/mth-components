@@ -199,14 +199,28 @@ async def test_lsp_client_document_sync_and_diagnostics(workspace: Path) -> None
     assert await client.wait_for_diagnostics("file:///empty.py", timeout_ms=20) == []
 
     # 6. Secondary event arrives during debounce sleep
-    event_loop = asyncio.get_running_loop()
-    event_loop.call_later(0.015, client._diagnostic_events[uri].set)
+    diag_event = client._diagnostic_events[uri]
+    orig_sleep = asyncio.sleep
+    sleep_count = 0
+
+    async def _mock_debounce_sleep(sec: float) -> None:
+        nonlocal sleep_count
+        sleep_count += 1
+        if sleep_count == 1:
+            diag_event.set()
+        await orig_sleep(0)
+
     pub_task2 = asyncio.create_task(_publish_later())
-    res_debounce = await client.wait_for_diagnostics(
-        uri, debounce_ms=30, timeout_ms=500
-    )
+    with patch(
+        "mth_plugins.bridges.lsp.client.asyncio.sleep",
+        side_effect=_mock_debounce_sleep,
+    ):
+        res_debounce = await client.wait_for_diagnostics(
+            uri, debounce_ms=30, timeout_ms=500
+        )
     await pub_task2
     assert res_debounce == diags
+    assert sleep_count >= 2
 
 
 @pytest.mark.asyncio
