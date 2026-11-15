@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from anima import Context
 from magitech_harness.session.events import ToolCallData
+from magitech_harness.system_prompt.service import SystemPromptService
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.bridges.mcp.client import McpClient
@@ -16,6 +17,7 @@ from mth_plugins.bridges.mcp.service import McpBridgeService
 
 async def test_service_load_servers_and_tool_registration() -> None:
     ctx = Context()
+    ctx.use(SystemPromptService)
     ctx.use(ToolService)
     await ctx.flush()
     service = McpBridgeService(ctx)
@@ -125,6 +127,7 @@ async def test_service_load_from_layers(tmp_path: Path) -> None:
 
 async def test_service_unsupported_config_and_nameless_tool() -> None:
     ctx = Context()
+    ctx.use(SystemPromptService)
     ctx.use(ToolService)
     await ctx.flush()
     service = McpBridgeService(ctx)
@@ -165,6 +168,7 @@ async def test_service_without_tools_or_layers() -> None:
 
 async def test_service_disposer_cleanup_on_fiber_dispose() -> None:
     ctx = Context()
+    ctx.use(SystemPromptService)
     ctx.use(ToolService)
     await ctx.flush()
 

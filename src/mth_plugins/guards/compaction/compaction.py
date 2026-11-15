@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any
 
 from anima import Context
@@ -176,12 +177,26 @@ async def compact_session(
 
     events_to_compact = session.events[:cut_idx]
     summary = custom_summary or await summarize_events(events_to_compact, ctx=ctx)
+    summary_blocks = (
+        [{"type": "text", "text": summary}] if isinstance(summary, str) else summary
+    )
+    start_seq = events_to_compact[0].seq if events_to_compact else 0
+    end_seq = events_to_compact[-1].seq if events_to_compact else 0
+    shadowed_seqs = [ev.seq for ev in events_to_compact]
+    shadowed_token_count = estimate_history_tokens(events_to_compact)
+    compaction_id = f"cmp-{uuid.uuid4().hex[:8]}"
 
     ctx.sessions.log_event(
         session,
         EventType.COMPACTION_SUMMARY,
         {
-            "summary": summary,
+            "compactionId": compaction_id,
+            "summary": summary_blocks,
+            "shadowedRange": {"start": start_seq, "end": end_seq},
+            "shadowedSeqs": shadowed_seqs,
+            "shadowedTokenCount": shadowed_token_count,
+            "provider": "compaction",
+            "model": "summary",
             "compacted_count": cut_idx,
         },
     )

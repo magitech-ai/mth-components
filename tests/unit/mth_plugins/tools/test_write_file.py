@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from anima import Context
 from magitech_harness.session.events import ToolCallData
+from magitech_harness.system_prompt.service import SystemPromptService
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.tools.write_file.component import apply
@@ -30,6 +31,7 @@ async def test_handle_write_file(tmp_path: Path) -> None:
 async def test_write_component_integration(tmp_path: Path) -> None:
     """Verifies write_file component mounts and executes via ToolService."""
     ctx = Context()
+    ctx.use(SystemPromptService)
     ctx.use(ToolService)
     ctx.use(apply)
     await ctx.flush()
