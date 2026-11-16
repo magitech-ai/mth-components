@@ -9,6 +9,13 @@
 - **Component Integration**: Components mount into `anima` context through an `apply(ctx)` entry point and register capabilities on explicit services such as `ctx.llm` and `ctx.tools`.
 - **No Hardcoded Tunables**: Provider endpoints, default models, and token pressure thresholds must be configurable parameters, not hidden hardcoded constants.
 
+## Shared Development Guidance
+
+Follow [home AGENTS](../home/AGENTS.md) for cross-repository standards,
+[uv skill](../home/skills/uv/SKILL.md) for package management and standard
+test/type-check commands, and [Ruff skill](../home/skills/ruff/SKILL.md) for
+linting and formatting.
+
 ## Plugin-Specific References
 
 ### Issue tracker
