@@ -8,12 +8,13 @@ provider, and the child session persists under the subsessions dir.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, ClassVar
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from anima import Context
 from magitech_harness import check_bundle_entries, create_harness
-from magitech_harness.llm.service import MockLLMProvider
+from magitech_harness.llm.service import MockLlmAdapter, MockLLMProvider
 from magitech_harness.tools.definition import Tool
 
 from mth_plugins.tools.subagent.manager import SubagentManager
@@ -48,6 +49,17 @@ async def test_subagent_turn_on_bundle_child_persists(tmp_path: Path) -> None:
     ) -> Context:
         ctx = create_harness(storage_dir=storage_dir)
         captured.append(ctx)
+
+        # Patch the unified driver's agent creation at flush time so the
+        # turn is deterministic (the legacy mock provider is copied by the
+        # manager for provider-seam assertions).
+        class _PatchAgents:
+            inject: ClassVar[list[str]] = ["agents", "llm"]
+
+            def __init__(self, c: Any) -> None:
+                c.llm.register_adapter(["mock"], MockLlmAdapter())
+
+        ctx.use(_PatchAgents)
         return ctx
 
     with patch(
