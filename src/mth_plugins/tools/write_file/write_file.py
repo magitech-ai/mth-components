@@ -8,9 +8,14 @@ from typing import Any
 
 
 async def handle_write_file(args: dict[str, Any]) -> str:
-    """Writes content to a file at the given path, creating parent directories."""
+    """Writes content to a file at the given path, creating parent directories.
+
+    Matches the reference fs/tool-fs write tool: a blank (empty or
+    whitespace-only) ``file_path`` is rejected; empty ``content`` is
+    legitimate (writes an empty file).
+    """
     path_str = args.get("path")
-    if not path_str:
+    if not path_str or not path_str.strip():
         return "Error: 'path' argument is required."
     content = args.get("content", "")
 
