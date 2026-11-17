@@ -10,16 +10,6 @@
       ],
       "enabled": true
     },
-    "pi-ai-provider": {
-      "version": "0.1.0",
-      "description": "Multi-provider model adapter with a 42-entry provider catalog for Magitech Harness",
-      "path": "src/mth_plugins/providers/pi_ai",
-      "entry_point": "component.py:apply",
-      "types": [
-        "Provider"
-      ],
-      "enabled": true
-    },
     "pollinations-provider": {
       "version": "0.1.0",
       "description": "Free anonymous LLM model provider via Pollinations for Magitech Harness",

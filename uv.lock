@@ -408,6 +408,7 @@ version = "0.2.0"
 source = { editable = "../magitech-harness" }
 dependencies = [
     { name = "anima" },
+    { name = "httpx" },
     { name = "pydantic" },
     { name = "pyyaml" },
 ]
@@ -415,6 +416,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "anima", editable = "../anima" },
+    { name = "httpx", specifier = ">=0.27.0" },
     { name = "pydantic", specifier = ">=2.14.3" },
     { name = "pyyaml", specifier = ">=6.0.3" },
 ]
