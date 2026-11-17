@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import ast
+import asyncio
 import json
 import os
 import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
@@ -18,14 +20,29 @@ from mth_plugins.tools.codeact.transform import (
     transform_code,
 )
 
+# Only these environment variables cross the subprocess boundary. Secrets
+# (API keys, tokens) are never inherited.
+_SAFE_ENV_KEYS = (
+    "PATH",
+    "SYSTEMROOT",
+    "TEMP",
+    "TMP",
+    "LANG",
+    "LC_ALL",
+    "PYTHONIOENCODING",
+)
+DEFAULT_TIMEOUT_S = 30.0
+
 
 class CodeActExecutor:
-    """CodeAct executor backed by a long-running subprocess PTC runtime."""
+    """CodeAct executor backed by a subprocess PTC runtime."""
 
-    def __init__(self, ctx: Context) -> None:
+    def __init__(self, ctx: Context, *, timeout_s: float = DEFAULT_TIMEOUT_S) -> None:
         self.ctx = ctx
         self.session_locals: dict[str, Any] = {}
         self._proc: subprocess.Popen[str] | None = None
+        self._timeout_s = timeout_s
+        self._tmp_dir: tempfile.TemporaryDirectory[str] | None = None
 
     def get_registered_tool_names(self) -> set[str]:
         tools_svc = getattr(self.ctx, "tools", None)
@@ -77,40 +94,80 @@ class CodeActExecutor:
     ) -> tuple[ast.Module, set[str]]:
         return transform_code(code_str, tool_names)
 
-    async def execute(self, code: str) -> str:  # noqa: PLR0912, PLR0915
+    def _minimal_env(
+        self, src_dir: str
+    ) -> tuple[dict[str, str], tempfile.TemporaryDirectory[str]]:
+        """Build a scrubbed environment for the runner subprocess."""
+        tmp = tempfile.TemporaryDirectory(prefix="codeact-")
+        env = {key: os.environ[key] for key in _SAFE_ENV_KEYS if key in os.environ}
+        env["PYTHONPATH"] = src_dir
+        env["HOME"] = tmp.name
+        env["USERPROFILE"] = tmp.name
+        return env, tmp
+
+    def _start_proc(self) -> None:
+        src_dir = str(Path(__file__).resolve().parents[3])
+        env, tmp = self._minimal_env(src_dir)
+        self._tmp_dir = tmp
+        runner_path = str(Path(__file__).resolve().parent / "runner.py")
+        self._proc = subprocess.Popen(
+            [sys.executable, runner_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            env=env,
+            cwd=tmp.name,
+        )
+
+    def _kill_proc(self) -> None:
+        proc = self._proc
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:  # pragma: no cover
+                pass
+        self._proc = None
+        if self._tmp_dir is not None:
+            self._tmp_dir.cleanup()
+            self._tmp_dir = None
+
+    def dispose(self) -> None:
+        """Terminate the runner and release its scratch directory."""
+        self._kill_proc()
+
+    def __del__(self) -> None:  # pragma: no cover - defensive finalizer
+        try:
+            self.dispose()
+        except Exception:
+            pass
+
+    async def execute(self, code: str) -> str:  # noqa: PLR0915
         tool_names = self.get_registered_tool_names()
 
         if self._proc is None or self._proc.poll() is not None:
-            env = dict(os.environ)
-            src_dir = str(Path(__file__).resolve().parents[3])
-            existing = env.get("PYTHONPATH", "")
-            env["PYTHONPATH"] = (
-                src_dir if not existing else src_dir + os.pathsep + existing
-            )
-            runner_path = str(Path(__file__).resolve().parent / "runner.py")
-            self._proc = subprocess.Popen(
-                [sys.executable, runner_path],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1,
-                env=env,
-            )
+            self._start_proc()
 
         proc = self._proc
-        assert proc.stdin is not None
-        assert proc.stdout is not None
+        assert proc is not None
+        stdin = proc.stdin
+        stdout = proc.stdout
+        assert stdin is not None
+        assert stdout is not None
 
         payload = {"code": code, "tool_names": sorted(tool_names)}
-        proc.stdin.write(json.dumps(payload) + "\n")
-        proc.stdin.flush()
+        stdin.write(json.dumps(payload) + "\n")
+        stdin.flush()
 
         result_value: str | None = None
         error_message: str | None = None
-        try:
+
+        async def _read_loop() -> None:  # noqa: PLR0912 - IPC message dispatch
+            nonlocal result_value, error_message
             while True:
-                line = proc.stdout.readline()
+                line = await asyncio.to_thread(stdout.readline)
                 if not line:  # pragma: no cover
                     break
                 line = line.strip()
@@ -127,7 +184,7 @@ class CodeActExecutor:
                     kwargs = msg.get("kwargs") or {}
                     try:
                         merged_kwargs = dict(kwargs)
-                        if isinstance(args, list):  # pragma: no cover
+                        if isinstance(args, list) and args:  # pragma: no cover
                             tools_svc = getattr(self.ctx, "tools", None)
                             tool = (
                                 tools_svc.get(tool_name)
@@ -146,28 +203,33 @@ class CodeActExecutor:
                             payload_out = json.dumps({"result": result})
                         except (TypeError, ValueError):  # pragma: no cover
                             payload_out = json.dumps({"result": str(result)})
-                        proc.stdin.write(payload_out + "\n")
-                        proc.stdin.flush()
+                        stdin.write(payload_out + "\n")
+                        stdin.flush()
                     except Exception as exc:
-                        proc.stdin.write(json.dumps({"error": str(exc)}) + "\n")
-                        proc.stdin.flush()
+                        stdin.write(json.dumps({"error": str(exc)}) + "\n")
+                        stdin.flush()
                 elif msg_type == "result":
                     result_value = str(msg.get("value", ""))
                     names = msg.get("session_local_names") or []
                     vals = msg.get("session_locals") or {}
                     for name in names:
                         self.session_locals[name] = vals.get(name)
-                    break
+                    return
                 elif msg_type == "error":  # pragma: no cover
-                    error_message = str(
-                        msg.get("message", "Execution Error")
-                    )  # pragma: no cover
-                    break  # pragma: no cover
-        except Exception as exc:  # pragma: no cover
+                    error_message = str(msg.get("message", "Execution Error"))
+                    return  # pragma: no cover
+
+        try:
+            await asyncio.wait_for(_read_loop(), timeout=self._timeout_s)
+        except TimeoutError:
+            self._kill_proc()
+            return f"Error: CodeAct execution timed out after {self._timeout_s}s"
+        except Exception as exc:
             error_message = f"Execution Error: {exc}"
 
         if error_message is not None:  # pragma: no cover
-            return error_message  # pragma: no cover
+            return error_message
         if result_value is not None:
             return result_value
-        return "Execution completed successfully."  # pragma: no cover
+        # A clean exit without a result is a failure, never a success.
+        return "Error: CodeAct execution produced no result"

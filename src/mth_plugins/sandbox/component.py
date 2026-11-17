@@ -12,7 +12,7 @@ from mth_plugins.sandbox.ladder import PrivilegeLevel, SandboxService
 def apply(
     ctx: Context,
     max_level: str = "strict",
-    enforce: bool = False,
+    enforce: bool = True,
     bwrap_path: str | None = None,
     **kwargs: Any,
 ) -> None:

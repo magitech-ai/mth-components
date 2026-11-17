@@ -6,7 +6,7 @@ import fnmatch
 import re
 import tomllib
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from mth_plugins.guards.approval.types import (
     ApprovalDecision,
@@ -76,16 +76,20 @@ class ApprovalPolicy:
         """
         for rule in self.rules:
             # Match tool name (supports exact match and glob like 'fs_*' or '*')
-            if not fnmatch.fnmatch(request.tool_name, rule.tool_pattern):
+            if not fnmatch.fnmatch(
+                cast(dict[str, Any], request)["toolName"], rule.tool_pattern
+            ):
                 continue
 
             # Match argument patterns if any
             matched_args = True
             for arg_key, pattern in rule.argument_patterns.items():
-                if arg_key not in request.arguments:
+                if arg_key not in cast(dict[str, Any], request).get("arguments", {}):
                     matched_args = False
                     break
-                val_str = str(request.arguments[arg_key])
+                val_str = str(
+                    cast(dict[str, Any], request).get("arguments", {})[arg_key]
+                )
                 try:
                     if not re.search(pattern, val_str):
                         matched_args = False
@@ -99,7 +103,7 @@ class ApprovalPolicy:
                     outcome=rule.outcome,
                     scope=ApprovalScope.PROJECT,
                     reason_code=ApprovalReasonCode.RULE,
-                    request_digest=request.digest,
+                    request_digest=str(cast(dict[str, Any], request).get("digest", "")),
                 )
 
         return None

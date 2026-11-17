@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from anima import Context
@@ -214,7 +214,7 @@ def test_sandbox_wrap_command_mode_takes_precedence_over_level(tmp_path: Path) -
 
 async def test_sandbox_run_success(tmp_path: Path) -> None:
     ctx = Context()
-    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.STRICT})
+    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.STRICT, "enforce": False})
 
     mock_shell = AsyncMock()
     mock_shell.run.return_value = ShellResult(
@@ -236,7 +236,9 @@ async def test_sandbox_run_success(tmp_path: Path) -> None:
 async def test_sandbox_run_passes_mode_through(tmp_path: Path) -> None:
     """run() forwards mode to wrap_command."""
     ctx = Context()
-    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.UNRESTRICTED})
+    svc = SandboxService(
+        ctx, {"max_level": PrivilegeLevel.UNRESTRICTED, "enforce": False}
+    )
     with patch.object(svc, "is_available", return_value=True):
         svc.bwrap_path = "/usr/bin/bwrap"
         mock_shell = AsyncMock()
@@ -256,7 +258,7 @@ async def test_sandbox_run_passes_mode_through(tmp_path: Path) -> None:
         assert "--ro-bind" in exec_str
 
     ctx = Context()
-    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.STRICT})
+    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.STRICT, "enforce": False})
 
     # Mock ctx.shell
     mock_shell = AsyncMock()
@@ -278,6 +280,17 @@ async def test_sandbox_run_passes_mode_through(tmp_path: Path) -> None:
 
 async def test_sandbox_run_no_shell_raises(tmp_path: Path) -> None:
     ctx = Context()
-    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.STRICT})
+    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.STRICT, "enforce": False})
     with pytest.raises(RuntimeError, match="No shell service mounted"):
         await svc.run("echo test", cwd=tmp_path)
+
+
+def test_sandbox_enforce_defaults_to_true() -> None:
+    """Sandbox enforcement is fail-closed by default (finding #13)."""
+    svc = SandboxService(MagicMock())
+    assert svc.enforce is True
+
+    with pytest.raises(SandboxUnavailableError):
+        # With enforce=True and no bwrap available, wrap_command fails loud.
+        svc.bwrap_path = None
+        svc.wrap_command(["echo", "hi"], level=PrivilegeLevel.STRICT)
