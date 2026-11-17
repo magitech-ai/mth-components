@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from anima import Context
 from magitech_harness.session.events import ToolCallData
@@ -139,3 +141,257 @@ async def test_truncation_component_waterfall_integration() -> None:
     call_obj = ToolCallData(call_id="call-2", name="obj_tool", arguments={})
     res_obj = await ctx.tools.execute(call_obj)
     assert res_obj.content == {"count": 42}
+
+
+@pytest.mark.asyncio
+async def test_truncation_new_pipeline_path_truncates_text_blocks() -> None:
+    """New pipeline convention: (exec_view, result) -> truncated content."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    apply(ctx, max_lines=2, max_bytes=60)
+    await ctx.flush()
+
+    exec_view = {"name": "verbose_tool", "callId": "c1"}
+    result: dict[str, Any] = {
+        "content": [
+            {"type": "text", "text": "line1\nline2\nline3\nline4"},
+        ],
+        "isError": False,
+    }
+
+    decision = await ctx.waterfall(
+        "tools/post-execute",
+        exec_view,
+        result,
+        default_handler=lambda *_a: {"kind": "accept"},
+    )
+
+    assert decision["kind"] == "accept"
+    assert len(decision["content"]) == 1
+    block = decision["content"][0]
+    assert block["type"] == "text"
+    assert "line1\nline2" in block["text"]
+    assert "[Output truncated" in block["text"]
+
+
+@pytest.mark.asyncio
+async def test_truncation_new_pipeline_path_under_limit_unchanged() -> None:
+    """Content within budget passes through unchanged (no-op)."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    apply(ctx, max_lines=10, max_bytes=1000)
+    await ctx.flush()
+
+    exec_view = {"name": "tool", "callId": "c1"}
+    result = {
+        "content": [{"type": "text", "text": "short"}],
+        "isError": False,
+    }
+
+    decision = await ctx.waterfall(
+        "tools/post-execute",
+        exec_view,
+        result,
+        default_handler=lambda *_a: {"kind": "accept"},
+    )
+
+    # Within budget: content passed through unchanged.
+    assert decision["kind"] == "accept"
+    assert decision["content"] == result["content"]
+
+
+@pytest.mark.asyncio
+async def test_truncation_new_pipeline_path_non_text_passthrough() -> None:
+    """Non-text results (no content list) pass through unchanged."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    apply(ctx, max_lines=2, max_bytes=50)
+    await ctx.flush()
+
+    exec_view = {"name": "tool", "callId": "c1"}
+    result: dict[str, Any] = {"content": "just a string", "isError": False}
+
+    decision = await ctx.waterfall(
+        "tools/post-execute",
+        exec_view,
+        result,
+        default_handler=lambda *_a: {"kind": "accept"},
+    )
+
+    # Non-text content: passed through unchanged as an accept decision.
+    assert decision == {"kind": "accept"}
+
+
+@pytest.mark.asyncio
+async def test_truncation_new_pipeline_path_mixed_blocks() -> None:
+    """Non-text blocks are preserved; only text blocks are truncated."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    apply(ctx, max_lines=1, max_bytes=40)
+    await ctx.flush()
+
+    exec_view = {"name": "tool", "callId": "c1"}
+    result: dict[str, Any] = {
+        "content": [
+            {"type": "text", "text": "alpha\nbeta\ngamma\ndelta"},
+            {"type": "image", "attachment": "img-1"},
+            {"type": "text", "text": "should be dropped after budget"},
+        ],
+        "isError": False,
+    }
+
+    decision = await ctx.waterfall(
+        "tools/post-execute",
+        exec_view,
+        result,
+        default_handler=lambda *_a: {"kind": "accept"},
+    )
+
+    assert decision["kind"] == "accept"
+    blocks = decision["content"]
+    assert len(blocks) == 1
+    assert blocks[0]["type"] == "text"
+    assert blocks[0]["text"].startswith("alpha")
+    assert "[Output truncated" in blocks[0]["text"]
+    # Everything after the truncated block is dropped (legacy-consistent),
+    # including the image and the later text block.
+    assert not any(b["type"] == "image" for b in blocks)
+    assert all(
+        b["text"] != "should be dropped after budget"
+        for b in blocks
+        if b.get("type") == "text"
+    )
+
+
+@pytest.mark.asyncio
+async def test_truncation_legacy_path_still_works() -> None:
+    """Legacy convention: (output_string, call_data) -> truncated string."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    apply(ctx, max_lines=2, max_bytes=60)
+    await ctx.flush()
+
+    decision = await ctx.waterfall(
+        "tools/post-execute",
+        "line1\nline2\nline3\nline4",
+        {"call_id": "c1", "name": "tool", "arguments": {}},
+        default_handler=lambda res, *a, **k: res,
+    )
+    assert isinstance(decision, str)
+    assert "line1\nline2" in decision
+    assert "[Output truncated" in decision
+
+
+@pytest.mark.asyncio
+async def test_truncation_legacy_path_under_limit_passthrough() -> None:
+    """Legacy path: output under the budget passes through untruncated."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    apply(ctx, max_lines=10, max_bytes=1000)
+    await ctx.flush()
+
+    decision = await ctx.waterfall(
+        "tools/post-execute",
+        "short",
+        {"call_id": "c1", "name": "tool", "arguments": {}},
+        default_handler=lambda res, *a, **k: res,
+    )
+    assert decision == "short"
+
+
+@pytest.mark.asyncio
+async def test_truncation_legacy_path_non_string_result_passthrough() -> None:
+    """Legacy path: non-string downstream result passes through unchanged."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    apply(ctx, max_lines=2, max_bytes=60)
+    await ctx.flush()
+
+    decision = await ctx.waterfall(
+        "tools/post-execute",
+        "line1\nline2",
+        {"call_id": "c1", "name": "tool", "arguments": {}},
+        default_handler=lambda *a, **k: {"kind": "accept"},
+    )
+    assert decision == {"kind": "accept"}
+
+
+@pytest.mark.asyncio
+async def test_truncation_new_pipeline_path_non_text_block_appended() -> None:
+    """A non-text block before any truncation is appended unchanged (else branch)."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    apply(ctx, max_lines=10, max_bytes=1000)
+    await ctx.flush()
+
+    exec_view = {"name": "tool", "callId": "c1"}
+    result: dict[str, Any] = {
+        "content": [
+            {"type": "image", "attachment": "img-1"},
+            {"type": "text", "text": "short"},
+        ],
+        "isError": False,
+    }
+    original_image = result["content"][0]
+
+    decision = await ctx.waterfall(
+        "tools/post-execute",
+        exec_view,
+        result,
+        default_handler=lambda *_a: {"kind": "accept"},
+    )
+
+    assert decision["kind"] == "accept"
+    assert decision["content"][0] is original_image
+    assert decision["content"][1]["type"] == "text"
+    assert decision["content"][1]["text"] == "short"
+
+
+@pytest.mark.asyncio
+async def test_truncation_new_pipeline_path_idempotent() -> None:
+    """Re-truncating already-truncated content does not double-add notices."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    apply(ctx, max_lines=1, max_bytes=40)
+    await ctx.flush()
+
+    exec_view = {"name": "tool", "callId": "c1"}
+    already_truncated = (
+        "alpha\n\n[Output truncated: showing 1 of 4 lines (40B limit reached).]"
+    )
+    already = {
+        "content": [
+            {
+                "type": "text",
+                "text": already_truncated,
+            }
+        ],
+        "isError": False,
+    }
+
+    first = await ctx.waterfall(
+        "tools/post-execute",
+        exec_view,
+        already,
+        default_handler=lambda *_a: {"kind": "accept"},
+    )
+    second = await ctx.waterfall(
+        "tools/post-execute",
+        exec_view,
+        first,
+        default_handler=lambda *_a: {"kind": "accept"},
+    )
+    assert first["kind"] == "accept"
+    assert second["kind"] == "accept"
+    # Idempotent: second pass produces no additional truncation notice.
+    assert second["content"][0]["text"] == first["content"][0]["text"]
+    assert second["content"][0]["text"].count("[Output truncated") == 1
