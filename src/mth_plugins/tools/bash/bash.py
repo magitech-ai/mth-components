@@ -30,7 +30,7 @@ async def handle_bash(
         Formatted stdout or error output string with optional spill file pointer.
     """
     command = args.get("command")
-    if not command:
+    if not command or not command.strip():
         return "Error: 'command' argument is required."
 
     timeout_ms = args.get("timeout_ms", 30000)
