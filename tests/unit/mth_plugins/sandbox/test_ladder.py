@@ -163,7 +163,98 @@ def test_sandbox_wrap_command_available(tmp_path: Path) -> None:
         assert "whoami" in cmd[-1]
 
 
+def test_sandbox_wrap_command_mode_read_only(tmp_path: Path) -> None:
+    """mode=read-only maps to READONLY privilege (read-only bind)."""
+    ctx = Context()
+    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.UNRESTRICTED})
+    with patch.object(svc, "is_available", return_value=True):
+        svc.bwrap_path = "/usr/bin/bwrap"
+        cmd = svc.wrap_command("cat file", cwd=tmp_path, mode="read-only")
+        assert cmd[0] == "/usr/bin/bwrap"
+        assert "--ro-bind" in cmd
+        assert "--unshare-net" in cmd
+
+
+def test_sandbox_wrap_command_mode_workspace_write(tmp_path: Path) -> None:
+    """mode=workspace-write maps to STRICT privilege (read/write bind)."""
+    ctx = Context()
+    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.UNRESTRICTED})
+    with patch.object(svc, "is_available", return_value=True):
+        svc.bwrap_path = "/usr/bin/bwrap"
+        cmd = svc.wrap_command("echo x > file", cwd=tmp_path, mode="workspace-write")
+        assert cmd[0] == "/usr/bin/bwrap"
+        assert "--bind" in cmd
+        assert "--ro-bind" not in cmd
+
+
+def test_sandbox_wrap_command_mode_danger_full_access(tmp_path: Path) -> None:
+    """mode=danger-full-access maps to UNRESTRICTED (no sandboxing)."""
+    ctx = Context()
+    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.UNRESTRICTED})
+    cmd = svc.wrap_command("rm -rf /", cwd=tmp_path, mode="danger-full-access")
+    assert cmd == ["/bin/sh", "-c", "rm -rf /"]
+
+
+def test_sandbox_wrap_command_mode_takes_precedence_over_level(tmp_path: Path) -> None:
+    """When both mode and level are given, mode wins."""
+    ctx = Context()
+    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.UNRESTRICTED})
+    with patch.object(svc, "is_available", return_value=True):
+        svc.bwrap_path = "/usr/bin/bwrap"
+        # level=UNRESTRICTED would short-circuit unwrapped; mode forces sandbox.
+        cmd = svc.wrap_command(
+            "cat file",
+            cwd=tmp_path,
+            level=PrivilegeLevel.UNRESTRICTED,
+            mode="read-only",
+        )
+        assert cmd[0] == "/usr/bin/bwrap"
+        assert "--ro-bind" in cmd
+
+
 async def test_sandbox_run_success(tmp_path: Path) -> None:
+    ctx = Context()
+    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.STRICT})
+
+    mock_shell = AsyncMock()
+    mock_shell.run.return_value = ShellResult(
+        exit_code=0,
+        stdout="sandboxed output",
+        stderr="",
+        timed_out=False,
+        aborted=False,
+        bytes_read=16,
+    )
+    ctx._register_service("shell", mock_shell)
+
+    res = await svc.run("echo hello", cwd=str(tmp_path))
+    assert res.exit_code == 0
+    assert res.stdout == "sandboxed output"
+    mock_shell.run.assert_awaited_once()
+
+
+async def test_sandbox_run_passes_mode_through(tmp_path: Path) -> None:
+    """run() forwards mode to wrap_command."""
+    ctx = Context()
+    svc = SandboxService(ctx, {"max_level": PrivilegeLevel.UNRESTRICTED})
+    with patch.object(svc, "is_available", return_value=True):
+        svc.bwrap_path = "/usr/bin/bwrap"
+        mock_shell = AsyncMock()
+        mock_shell.run.return_value = ShellResult(
+            exit_code=0,
+            stdout="ok",
+            stderr="",
+            timed_out=False,
+            aborted=False,
+            bytes_read=2,
+        )
+        ctx._register_service("shell", mock_shell)
+
+        await svc.run("cat file", cwd=str(tmp_path), mode="read-only")
+        exec_str = mock_shell.run.await_args.args[0]
+        assert "bwrap" in exec_str
+        assert "--ro-bind" in exec_str
+
     ctx = Context()
     svc = SandboxService(ctx, {"max_level": PrivilegeLevel.STRICT})
 

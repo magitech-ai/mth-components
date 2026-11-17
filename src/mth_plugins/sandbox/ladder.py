@@ -231,8 +231,8 @@ class SandboxService(Service):
             SandboxUnavailableError: If sandbox is required and enforced
                 but unavailable on the host.
         """
-        if mode is not None:  # pragma: no cover
-            target_level = sandbox_mode_level(mode)  # pragma: no cover
+        if mode is not None:
+            target_level = sandbox_mode_level(mode)
         else:
             target_level = level or self.max_level
         self.validate_privilege(target_level)
