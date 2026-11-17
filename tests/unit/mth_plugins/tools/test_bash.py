@@ -127,8 +127,8 @@ async def test_handle_bash_with_ctx_shell_and_spill(tmp_path: Path) -> None:
         spill_dir=spill_dir,
         max_output_bytes=200,
     )
-    assert "[truncated" in res_large
-    assert "spilled to:" in res_large
+    assert "[output truncated; full output:" in res_large
+    assert ".stdout" in res_large
     assert spill_dir.exists()
 
     spill_files = list(spill_dir.glob("*.stdout"))
@@ -167,7 +167,7 @@ async def test_handle_bash_spill_oserror_suppressed(tmp_path: Path) -> None:
             ctx=ctx,
             max_output_bytes=100,
         )
-        assert "[truncated" in res
+        assert "[output truncated; full output:" in res
 
 
 @pytest.mark.asyncio

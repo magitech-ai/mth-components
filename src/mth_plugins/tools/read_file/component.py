@@ -31,9 +31,17 @@ def apply(ctx: Context, config: dict[str, Any] | None = None, **kwargs: Any) -> 
     default_limit = int(cfg.get("default_limit", DEFAULT_LIMIT))
     max_limit = int(cfg.get("max_limit", MAX_LIMIT))
 
+    configured_root = cfg.get("workspace_root")
+
     async def _execute(args: dict[str, Any]) -> str:
+        # Resolve the workspace root at call time so branch-worktree children
+        # confine to their own workspace, not a captured parent root.
+        root = configured_root or getattr(ctx, "workspace_dir", None)
         return await handle_read_file(
-            args, default_limit=default_limit, max_limit=max_limit
+            args,
+            default_limit=default_limit,
+            max_limit=max_limit,
+            workspace_root=root,
         )
 
     read_tool = define_tool(
