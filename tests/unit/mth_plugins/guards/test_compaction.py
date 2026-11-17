@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import uuid
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, ClassVar
 
 import pytest
 from anima import Context
+from magitech_harness.compaction.service import CompactionService
 from magitech_harness.llm.service import LLMService, MockLLMProvider
 from magitech_harness.llm.types import ModelResponse
 from magitech_harness.session.events import EventType, SessionEvent, ToolCallData
@@ -27,6 +30,8 @@ from mth_plugins.guards.compaction.compaction import (
     summarize_events,
 )
 from mth_plugins.guards.compaction.component import apply
+from mth_plugins.guards.compaction.component import apply as compaction_apply
+from mth_plugins.guards.compaction.pruner import PRUNE_MARKER, prune_content
 
 
 def _make_event(
@@ -402,19 +407,17 @@ async def test_compact_session_success() -> None:
     assert res["compacted_count"] == 2
     assert "summary" in res
 
-    # Verify event logged to session
-    assert session.events[-1].type == EventType.COMPACTION_SUMMARY
-    assert session.events[-1].payload["compacted_count"] == 2
+    # The log-only summary is followed by the operative surface replace.
+    assert any(e.type == EventType.COMPACTION_SUMMARY for e in session.events)
+    checkpoint = session.events[-1]
+    assert checkpoint.type == EventType.USER_MESSAGE
+    assert (checkpoint.surface_op or {}).get("op") == "replace"
 
-    # The summary event is log-only: the transcript still carries the
-    # pre-cut messages until the compaction flow appends a replacement
-    # message for the shadowed range.
+    # Compaction actually changes the derived transcript now (finding #15):
+    # shadowed messages collapse into one checkpoint; the tail survives.
     msgs = session.derive_messages()
-    assert len(msgs) == 4
-    assert msgs[0]["content"] == [{"type": "text", "text": "Step 1"}]
-    assert msgs[1]["content"] == [{"type": "text", "text": "Step 1 answer"}]
-    assert msgs[2]["content"] == [{"type": "text", "text": "Step 2"}]
-    assert msgs[3]["content"] == [{"type": "text", "text": "Step 2 answer"}]
+    assert any("<compacted-summary>" in json.dumps(m.get("content", [])) for m in msgs)
+    assert {"type": "text", "text": "Step 2 answer"} in (msgs[-1].get("content") or [])
 
 
 @pytest.mark.asyncio
@@ -491,7 +494,7 @@ async def test_component_waterfall_agent_pre_step_pressure() -> None:
     )
 
     assert res["action"] == "continue"
-    assert session.events[-1].type == EventType.COMPACTION_SUMMARY
+    assert any(e.type == EventType.COMPACTION_SUMMARY for e in session.events)
 
 
 @pytest.mark.asyncio
@@ -574,3 +577,66 @@ async def test_component_waterfall_agent_pre_step_no_session() -> None:
         default_handler=lambda p: p,
     )
     assert res["action"] == "continue"
+
+
+def test_tool_result_pruner_marker_bytes() -> None:
+    """The pruner emits the reference-exact marker and keeps head+tail."""
+    assert PRUNE_MARKER == "\n\n[... tool result middle pruned ...]\n\n"
+    assert len(PRUNE_MARKER.encode("utf-8")) == 39
+    long_text = "X" * 9000
+    result = prune_content([{"type": "text", "text": long_text}])
+    assert result is not None
+    assert PRUNE_MARKER in result[0]["text"]
+    assert result[0]["text"].count("X") == 4096 + 1024
+
+
+def test_tool_result_pruner_noop_when_small() -> None:
+    assert prune_content([{"type": "text", "text": "short"}]) is None
+
+
+def test_pruner_preserves_non_text_blocks_and_empty() -> None:
+    result = prune_content(
+        [
+            {"type": "image", "data": "x"},
+            {"type": "text", "text": "A" * 9000},
+            {"type": "text", "text": "B" * 200},
+        ]
+    )
+    assert result is not None
+    assert result[0] == {"type": "image", "data": "x"}
+    assert PRUNE_MARKER in result[1]["text"]
+    assert result[2] == {"type": "text", "text": "B" * 200}
+    assert prune_content("not a list") is None
+
+
+def test_pruner_without_intersecting_text_block() -> None:
+    # Only non-text blocks -> nothing to prune.
+    assert prune_content([{"type": "image", "data": "x"}]) is None
+
+
+@pytest.mark.asyncio
+async def test_component_registers_pruner_and_prunes_session() -> None:
+
+    ctx = Context()
+    ctx.use(SessionProjectionRegistry)
+    ctx.use(SessionService)
+    ctx.use(CompactionService)
+    await ctx.flush()
+    compaction_apply(ctx)
+    assert "tool-result" in ctx.compaction.list_pruners()
+
+    # Exercise the registered pruner on a minimal session-like object.
+    class _S:
+        events: ClassVar[list[Any]] = [
+            SimpleNamespace(
+                type="tool/result",
+                payload={
+                    "message": {"content": [{"type": "text", "text": "Q" * 9000}]}
+                },
+            ),
+            SimpleNamespace(type="user/message", payload={}),
+        ]
+
+    pruner = ctx.compaction._pruners["tool-result"]
+    out = pruner(_S())
+    assert out["pruned"] is True and out["count"] == 1

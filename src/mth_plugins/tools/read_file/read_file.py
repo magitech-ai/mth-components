@@ -6,6 +6,8 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
+from mth_plugins.tools.fs.path_guard import PathEscapeError, confined_path
+
 DEFAULT_LIMIT = 2000
 MAX_LIMIT = 2000
 _BINARY_PROBE_BYTES = 8192
@@ -31,11 +33,12 @@ def _validate_limit(limit: Any, default_limit: int, max_limit: int) -> int | Non
     return limit
 
 
-async def handle_read_file(
+async def handle_read_file(  # noqa: PLR0912
     args: dict[str, Any],
     *,
     default_limit: int = DEFAULT_LIMIT,
     max_limit: int = MAX_LIMIT,
+    workspace_root: Path | str | None = None,
 ) -> str:
     """Reads a file with optional 1-indexed line offset and limit pagination.
 
@@ -52,7 +55,13 @@ async def handle_read_file(
     if offset is not None and offset < 1:
         return f"Error: Invalid offset '{offset}'. Must be 1 or greater."
 
-    file_path = Path(path_str)
+    if workspace_root is not None:
+        try:
+            file_path = confined_path(workspace_root, path_str)
+        except (PathEscapeError, OSError) as exc:
+            return f"Error: {exc}"
+    else:
+        file_path = Path(path_str)
     if not file_path.exists():
         return f"Error: File not found: {path_str}"
 

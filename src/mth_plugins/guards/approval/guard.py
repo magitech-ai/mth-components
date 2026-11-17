@@ -22,17 +22,9 @@ from mth_plugins.guards.approval.types import (
 
 logger = logging.getLogger(__name__)
 
-SAFE_READ_TOOLS = frozenset(
-    {
-        "read_file",
-        "list_files",
-        "find",
-        "grep",
-        "read_url",
-        "lsp_definition",
-        "lsp_references",
-    }
-)
+# Only tools that actually exist. Phantom entries previously granted an
+# invisible bypass to any future tool reusing those names (finding #20).
+SAFE_READ_TOOLS = frozenset({"read_file", "lsp_definition", "lsp_references"})
 
 
 class ApprovalGuard:

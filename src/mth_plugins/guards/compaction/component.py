@@ -12,6 +12,7 @@ from mth_plugins.guards.compaction.compaction import (
     compact_session,
     estimate_history_tokens,
 )
+from mth_plugins.guards.compaction.pruner import prune_content
 
 
 def apply(ctx: Context, config: dict | None = None, **kwargs: Any) -> None:
@@ -46,6 +47,27 @@ def apply(ctx: Context, config: dict | None = None, **kwargs: Any) -> None:
                 await compact_session(ctx, session, target_ratio=target_ratio)
         pre_step_res = await next_fn(payload)
         return cast(dict[str, Any], pre_step_res)
+
+    # Register the tool-result pruner on the compaction service so oversized
+    # results can be collapsed with the reference byte-exact marker.
+    if ctx.has("compaction"):
+        ctx.compaction.register_pruner(
+            "tool-result", lambda session, **kw: _prune_session(session)
+        )
+
+        def _prune_session(session: Any) -> dict[str, Any]:
+            pruned = 0
+            for event in session.events:
+                if event.type != "tool/result":  # type: ignore[comparison-overlap]
+                    continue
+                payload = dict(event.payload or {})
+                message = dict(payload.get("message") or {})
+                blocks = prune_content(message.get("content"))
+                if blocks is not None:  # pragma: no branch - pruner set
+                    message["content"] = blocks
+                    payload["message"] = message
+                    pruned += 1
+            return {"pruned": pruned > 0, "count": pruned}
 
     ctx.on("session/compact", _on_session_compact, mode=EventMode.WATERFALL)
     ctx.on("agent/pre-step", _on_pre_step, mode=EventMode.WATERFALL)

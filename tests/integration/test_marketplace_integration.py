@@ -214,16 +214,21 @@ async def test_end_to_end_marketplace_streaming_and_compaction(
 
     assert compact_res["compacted"] is True
     assert "summary" in compact_res
-    assert session.events[-1].type == EventType.COMPACTION_SUMMARY
+    assert any(e.type == EventType.COMPACTION_SUMMARY for e in session.events)
+    # The operative compaction surface replace is a sourced user/message.
+    assert session.events[-1].type == EventType.USER_MESSAGE
 
-    # The summary event is log-only: the transcript still carries the
-    # pre-cut messages until the compaction flow appends a replacement
-    # message for the shadowed range.
+    # Compaction changed the derived transcript: the leading user message is
+    # now a checkpoint carrying the compacted-summary framing.
     msgs = session.derive_messages()
     assert len(msgs) >= 2
     user_msgs = [m for m in msgs if m.get("role") == "user"]
     assert user_msgs
-    assert user_msgs[0]["content"] == [{"type": "text", "text": "Run streaming echo"}]
+    assert any(
+        "<compacted-summary>" in block.get("text", "")
+        for block in user_msgs[0].get("content", [])
+        if isinstance(block, dict)
+    )
 
 
 @pytest.mark.asyncio

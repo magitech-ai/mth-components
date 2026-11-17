@@ -22,6 +22,12 @@ def apply(ctx: Context, config: dict[str, Any] | None = None, **kwargs: Any) -> 
     Registers ``tool:write_file`` system prompt guidance (reference
     fs/tool-fs write tool).
     """
+    configured_root = (config or {}).get("workspace_root", kwargs.get("workspace_root"))
+
+    async def _execute(args: dict[str, Any]) -> str:
+        root = configured_root or getattr(ctx, "workspace_dir", None)
+        return await handle_write_file(args, workspace_root=root)
+
     write_tool = define_tool(
         name="write_file",
         description="Write text content to a file, creating parent directories.",
@@ -37,7 +43,7 @@ def apply(ctx: Context, config: dict[str, Any] | None = None, **kwargs: Any) -> 
                 "required": True,
             },
         },
-        execute=handle_write_file,
+        execute=_execute,
     )
     ctx.tools.register(write_tool)
 

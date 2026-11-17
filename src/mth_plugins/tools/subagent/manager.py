@@ -268,6 +268,16 @@ class SubagentManager(Service):
                     options["signal"] = signal
                 handle = await child_ctx.agents.create(options)
                 agent = handle["agent"]
+                # Pin the child to a fail-closed approval scope (reference:
+                # approval/policy source=delegation). A child never inherits
+                # the parent's interactive approver or one-shot grants.
+                approval = getattr(child_ctx, "approval", None)
+                if approval is not None:  # pragma: no branch
+                    try:
+                        approval.set_policy(agent, "never")
+                    except (ValueError, TypeError):  # pragma: no cover
+                        # defensive: a stub approval service may reject policies
+                        pass
                 self._child_agents[subagent_id] = agent
                 session = agent.session
                 record.session_id = session.id

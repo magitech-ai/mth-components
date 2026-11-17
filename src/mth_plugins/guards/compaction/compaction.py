@@ -10,6 +10,7 @@ from anima import Context
 from magitech_harness.session.events import EventType, SessionEvent
 from magitech_harness.session.pairing import is_tool_pairing_balanced
 from magitech_harness.session.store import Session
+from magitech_harness.session.surface import fold_surface
 
 logger = logging.getLogger("mth_plugins.guards.compaction")
 
@@ -180,13 +181,31 @@ async def compact_session(
     summary_blocks = (
         [{"type": "text", "text": summary}] if isinstance(summary, str) else summary
     )
-    start_seq = events_to_compact[0].seq if events_to_compact else 0
-    end_seq = events_to_compact[-1].seq if events_to_compact else 0
-    shadowed_seqs = [ev.seq for ev in events_to_compact]
+    # Compute the CURRENT surface nodes so the replace op references live
+    # nodes (an earlier compaction may have already shadowed some events).
+    surface_nodes = fold_surface(session.events).nodes
+    compact_seqs = {ev.seq for ev in events_to_compact}
+    # Never shadow the system/message head (reference selectCompactableRange):
+    # it is the stable prompt-cache prefix and surface rules forbid rewriting it.
+    shadowed_surface = [seq for seq in surface_nodes if seq in compact_seqs]
+    if shadowed_surface and shadowed_surface[0] == surface_nodes[0]:
+        head_event = session.events[surface_nodes[0]]
+        if head_event.type == EventType.SYSTEM_MESSAGE:
+            shadowed_surface = shadowed_surface[1:]
+    if not shadowed_surface:  # pragma: no cover - no surface in range
+        return {
+            "compacted": False,
+            "reason": "No surface nodes in the compactable range",
+        }
+
+    start_seq = shadowed_surface[0]
+    end_seq = shadowed_surface[-1]
+    shadowed_seqs = shadowed_surface
     shadowed_token_count = estimate_history_tokens(events_to_compact)
     compaction_id = f"cmp-{uuid.uuid4().hex[:8]}"
 
-    ctx.sessions.log_event(
+    # 1. Log-only compaction/summary (durable audit detail).
+    summary_event = ctx.sessions.log_event(
         session,
         EventType.COMPACTION_SUMMARY,
         {
@@ -199,6 +218,32 @@ async def compact_session(
             "model": "summary",
             "compacted_count": cut_idx,
         },
+    )
+
+    # 2. The operative surface replace: a user/message checkpoint that folds
+    #    the shadowed span (with framing markers) into derive_messages().
+    checkpoint_content = [
+        {
+            "type": "text",
+            "text": (
+                "This is an automatically generated checkpoint condensing an "
+                "earlier span of the conversation.\n\n<compacted-summary>\n"
+            ),
+        },
+        *summary_blocks,
+        {"type": "text", "text": "\n</compacted-summary>"},
+    ]
+    ctx.sessions.log_event(
+        session,
+        EventType.USER_MESSAGE,
+        {
+            "content": checkpoint_content,
+            "role": "user",
+            "id": f"checkpoint-{compaction_id}",
+            "source": {"kind": "compaction", "compactionId": compaction_id},
+        },
+        surface_op={"op": "replace", "startSeq": start_seq, "endSeq": end_seq},
+        source_event_seqs=[summary_event.seq, *shadowed_surface],
     )
 
     return {

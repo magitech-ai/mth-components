@@ -41,6 +41,8 @@ async def handle_bash(
     if cwd and not cwd.is_dir():
         return f"Error: Working directory does not exist: {cwd_str}"
 
+    truncated = False
+    spill_paths: list[str] = []
     if ctx is not None and ctx.has("shell"):
         res = await ctx.shell.run(
             command,
@@ -52,7 +54,21 @@ async def handle_bash(
         stdout = res.stdout.strip()
         stderr = res.stderr.strip()
         timed_out = res.timed_out
-        bytes_read = res.bytes_read
+        # The shell collector already spilled the COMPLETE stream to disk;
+        # carry its truncation + spill paths into the rendered marker.
+        truncated = (
+            bool(getattr(res, "truncated", False))
+            or "[truncated" in stdout
+            or "[truncated" in stderr
+        )
+        spill_paths = [
+            p
+            for p in (
+                getattr(res, "stdout_spill_path", None),
+                getattr(res, "stderr_spill_path", None),
+            )
+            if p
+        ]
     else:
         try:
             proc = await asyncio.create_subprocess_shell(
@@ -69,7 +85,6 @@ async def handle_bash(
             stdout = stdout_bytes.decode("utf-8", errors="replace").strip()
             stderr = stderr_bytes.decode("utf-8", errors="replace").strip()
             timed_out = False
-            bytes_read = len(stdout_bytes) + len(stderr_bytes)
         except TimeoutError:
             try:
                 proc.kill()
@@ -81,23 +96,24 @@ async def handle_bash(
         return f"Command timed out after {timeout_seconds} seconds."
 
     spill_note = ""
-    if (
-        bytes_read > max_output_bytes
-        or "[truncated" in stdout
-        or "[truncated" in stderr
-    ):
-        effective_spill_dir = spill_dir or (Path.home() / ".agents" / "spill")
-        try:
-            effective_spill_dir.mkdir(parents=True, exist_ok=True)
-            spill_id = str(uuid.uuid4())
-            spill_file = effective_spill_dir / f"{spill_id}.stdout"
-            spill_content = stdout + (f"\n{stderr}" if stderr else "")
-            spill_file.write_text(spill_content, encoding="utf-8")
-            spill_note = (
-                f"\n\n[Full output ({bytes_read} bytes) spilled to: {spill_file}]"
-            )
-        except OSError:
-            pass
+    if truncated or spill_paths:
+        if not spill_paths:  # pragma: no cover - collector always spills
+            # No collector spill (e.g. no ctx.shell path): write the output we
+            # have. The collector path never reaches here with truncated=True
+            # and no spill, since it always spills the complete stream.
+            effective_spill_dir = spill_dir or (Path.home() / ".agents" / "spill")
+            try:
+                effective_spill_dir.mkdir(parents=True, exist_ok=True)
+                spill_file = effective_spill_dir / f"{uuid.uuid4()}.stdout"
+                spill_file.write_text(
+                    stdout + (f"\n{stderr}" if stderr else ""), encoding="utf-8"
+                )
+                spill_paths = [str(spill_file)]
+            except OSError:
+                pass
+        # Exact reference marker (tool-bash/src/render.ts): never silently drop.
+        full = ", ".join(spill_paths) if spill_paths else "(unavailable)"
+        spill_note = f"\n[output truncated; full output: {full}]"
 
     if exit_code == 0:
         base = stdout if stdout else "(Command executed with no output)"
