@@ -36,7 +36,9 @@ async def test_handle_edit_file(tmp_path: Path) -> None:
     assert "must differ" in res
 
     # Missing file
-    res = await handle_edit_file({"path": str(tmp_path / "missing.txt"), "target": "a"})
+    res = await handle_edit_file(
+        {"path": str(tmp_path / "missing.txt"), "target": "a"}
+    )
     assert "File not found" in res
 
     target = tmp_path / "edit_me.txt"
