@@ -16,6 +16,8 @@ def apply(ctx: Context, **kwargs: Any) -> CodeActExecutor:
 
     async def _handle_execute_python(args: dict[str, Any]) -> str:
         code = str(args.get("code", ""))
+        if not code.strip():
+            return "Error: 'code' argument is required."
         return await executor.execute(code)
 
     tool = Tool(
