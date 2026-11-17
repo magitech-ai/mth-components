@@ -7,8 +7,10 @@ from mth_plugins.sandbox.ladder import (
     PrivilegeViolationError,
     SandboxDiagnostics,
     SandboxError,
+    SandboxMode,
     SandboxService,
     SandboxUnavailableError,
+    sandbox_mode_level,
 )
 
 __all__ = [
@@ -16,6 +18,8 @@ __all__ = [
     "PrivilegeViolationError",
     "SandboxDiagnostics",
     "SandboxError",
+    "SandboxMode",
     "SandboxService",
     "SandboxUnavailableError",
+    "sandbox_mode_level",
 ]

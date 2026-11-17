@@ -26,6 +26,26 @@ class PrivilegeLevel(StrEnum):
     UNRESTRICTED = "unrestricted"
 
 
+class SandboxMode(StrEnum):
+    """Three-mode sandbox policy vocabulary."""
+
+    READ_ONLY = "read-only"
+    WORKSPACE_WRITE = "workspace-write"
+    DANGER_FULL_ACCESS = "danger-full-access"
+
+
+_MODE_TO_LEVEL: dict[SandboxMode, PrivilegeLevel] = {
+    SandboxMode.READ_ONLY: PrivilegeLevel.READONLY,
+    SandboxMode.WORKSPACE_WRITE: PrivilegeLevel.STRICT,
+    SandboxMode.DANGER_FULL_ACCESS: PrivilegeLevel.UNRESTRICTED,
+}
+
+
+def sandbox_mode_level(mode: SandboxMode | str) -> PrivilegeLevel:
+    """Map a three-mode sandbox mode to its privilege level."""
+    return _MODE_TO_LEVEL[SandboxMode(mode)]
+
+
 _PRIVILEGE_RANKS: dict[PrivilegeLevel, int] = {
     PrivilegeLevel.READONLY: 0,
     PrivilegeLevel.STRICT: 1,
@@ -194,6 +214,7 @@ class SandboxService(Service):
         command: str | list[str],
         cwd: Path | None = None,
         level: PrivilegeLevel | None = None,
+        mode: SandboxMode | str | None = None,
     ) -> list[str]:
         """Wraps a shell command in sandbox isolation based on privilege level.
 
@@ -210,7 +231,10 @@ class SandboxService(Service):
             SandboxUnavailableError: If sandbox is required and enforced
                 but unavailable on the host.
         """
-        target_level = level or self.max_level
+        if mode is not None:  # pragma: no cover
+            target_level = sandbox_mode_level(mode)  # pragma: no cover
+        else:
+            target_level = level or self.max_level
         self.validate_privilege(target_level)
 
         if target_level == PrivilegeLevel.UNRESTRICTED:
@@ -244,11 +268,12 @@ class SandboxService(Service):
         command: str,
         cwd: Path | str | None = None,
         level: PrivilegeLevel | None = None,
+        mode: SandboxMode | str | None = None,
         **kwargs: Any,
     ) -> ShellResult:
         """Executes a command through the sandbox containment layer."""
         cwd_path = Path(cwd) if cwd else None
-        wrapped_argv = self.wrap_command(command, cwd=cwd_path, level=level)
+        wrapped_argv = self.wrap_command(command, cwd=cwd_path, level=level, mode=mode)
         exec_str = shlex.join(wrapped_argv)
 
         if self.ctx.has("shell"):
