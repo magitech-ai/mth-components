@@ -21,6 +21,20 @@ async def test_handle_edit_file(tmp_path: Path) -> None:
     res = await handle_edit_file({})
     assert "required" in res
 
+    # Blank path
+    res = await handle_edit_file({"path": "   ", "target": "a"})
+    assert "required" in res
+
+    # Empty target
+    res = await handle_edit_file({"path": str(tmp_path / "x.txt"), "target": ""})
+    assert "required" in res
+
+    # Target equals replacement (no-op)
+    res = await handle_edit_file(
+        {"path": str(tmp_path / "x.txt"), "target": "a", "replacement": "a"}
+    )
+    assert "must differ" in res
+
     # Missing file
     res = await handle_edit_file({"path": str(tmp_path / "missing.txt"), "target": "a"})
     assert "File not found" in res
@@ -76,3 +90,33 @@ async def test_edit_component_integration(tmp_path: Path) -> None:
     res_edit = await ctx.tools.execute(call_edit)
     assert not res_edit.is_error
     assert test_file.read_text(encoding="utf-8") == "after text"
+
+
+@pytest.mark.asyncio
+async def test_edit_component_registers_system_prompt_section() -> None:
+    """Verifies the component registers tool:edit_file prompt guidance."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    ctx.use(apply)
+    await ctx.flush()
+
+    assert ctx.systemPrompt.get_section_order("TOOL_EDIT") == 1300
+
+
+@pytest.mark.asyncio
+async def test_edit_component_without_system_prompt_service() -> None:
+    """Verifies the component mounts and skips section when systemPrompt absent."""
+    fake_tools = type(
+        "FakeTools",
+        (),
+        {"register": lambda self, tool: None},
+    )()
+    ctx = Context()
+    ctx.reflect.provide("tools", fake_tools, None)
+    await ctx.flush()
+
+    ctx.use(apply)
+    await ctx.flush()
+
+    assert ctx.has("tools")

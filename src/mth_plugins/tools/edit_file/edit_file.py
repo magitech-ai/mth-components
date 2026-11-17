@@ -8,13 +8,22 @@ from typing import Any
 
 
 async def handle_edit_file(args: dict[str, Any]) -> str:
-    """Replaces target string with replacement string in the specified file."""
+    """Replaces target string with replacement string in the specified file.
+
+    Matches the reference fs/tool-fs edit tool: a blank path, empty target,
+    or target equal to replacement (no-op) are all rejected; the target must
+    match exactly once.
+    """
     path_str = args.get("path")
+    if not path_str or not path_str.strip():
+        return "Error: 'path' argument is required."
     target = args.get("target")
+    if target is None or target == "":
+        return "Error: 'target' argument is required."
     replacement = args.get("replacement", "")
 
-    if not path_str or target is None:
-        return "Error: 'path' and 'target' arguments are required."
+    if target == replacement:
+        return f"Error: target and replacement must differ in {path_str}"
 
     file_path = Path(path_str)
     if not file_path.exists():
