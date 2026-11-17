@@ -4,7 +4,7 @@ import ast
 
 import pytest
 
-from mth_plugins.tools.codeact.codeact import ASTSafetyVisitor, WriteProtectionVisitor
+from mth_plugins.tools.codeact.transform import ASTSafetyVisitor, WriteProtectionVisitor
 
 
 def test_ast_safety_allowed_imports() -> None:
