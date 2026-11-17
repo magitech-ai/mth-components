@@ -1,0 +1,14 @@
+{
+  "name": "pi-ai-provider",
+  "version": "0.1.0",
+  "description": "Multi-provider model adapter with a 42-entry provider catalog for Magitech Harness",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Provider"
+  ],
+  "python_deps": [
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0"
+  ],
+  "enabled": true
+}
