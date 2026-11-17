@@ -13,11 +13,20 @@ from mth_plugins.sandbox.ladder import (
     PrivilegeLevel,
     PrivilegeViolationError,
     SandboxDiagnostics,
+    SandboxMode,
     SandboxService,
     SandboxUnavailableError,
     build_bubblewrap_command,
     find_bubblewrap,
+    sandbox_mode_level,
 )
+
+
+def test_sandbox_mode_level_maps_modes() -> None:
+    assert sandbox_mode_level(SandboxMode.READ_ONLY).value == "readonly"
+    assert sandbox_mode_level(SandboxMode.WORKSPACE_WRITE).value == "strict"
+    assert sandbox_mode_level(SandboxMode.DANGER_FULL_ACCESS).value == "unrestricted"
+    assert sandbox_mode_level("read-only").value == "readonly"
 
 
 def test_find_bubblewrap(tmp_path: Path) -> None:
