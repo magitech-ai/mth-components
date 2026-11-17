@@ -181,7 +181,7 @@ class SandboxService(Service):
         super().__init__(ctx, "sandbox")
         cfg = config or {}
         self.max_level = cfg.get("max_level", PrivilegeLevel.STRICT)
-        self.enforce = cfg.get("enforce", False)
+        self.enforce = cfg.get("enforce", True)
         self.bwrap_path = find_bubblewrap(cfg.get("bwrap_path"))
 
     def is_available(self) -> bool:

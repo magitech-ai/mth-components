@@ -57,8 +57,6 @@ SAFE_BUILTINS = {
         "float",
         "format",
         "frozenset",
-        "getattr",
-        "hasattr",
         "hash",
         "hex",
         "id",
@@ -87,8 +85,6 @@ SAFE_BUILTINS = {
         "str",
         "sum",
         "tuple",
-        "type",
-        "vars",
         "zip",
         "__build_class__",
         "Exception",
@@ -128,7 +124,10 @@ class ASTSafetyVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
-        # simplified: check root
+        # Reject every dunder attribute: subclass traversal, __globals__,
+        # __mro__, __subclasses__, __class__, etc. are the primary escape.
+        if node.attr.startswith("__") and node.attr.endswith("__"):
+            raise ValueError(f"Forbidden dunder attribute: '{node.attr}'")
         root = None
         if isinstance(node.value, ast.Name):
             root = node.value.id
@@ -136,9 +135,25 @@ class ASTSafetyVisitor(ast.NodeVisitor):
             raise ValueError(f"Forbidden attribute access: '{root}.{node.attr}'")
         self.generic_visit(node)
 
+    def visit_Name(self, node: ast.Name) -> None:
+        if isinstance(node.ctx, ast.Load) and node.id.startswith("__"):
+            raise ValueError(f"Forbidden dunder name: '{node.id}'")
+        self.generic_visit(node)
+
     def visit_Call(self, node: ast.Call) -> None:
         if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_NAMES:
             raise ValueError(f"Forbidden function call: '{node.func.id}'")
+        if isinstance(node.func, ast.Name) and node.func.id in {
+            "getattr",
+            "hasattr",
+            "setattr",
+            "delattr",
+            "vars",
+            "type",
+            "eval",
+            "exec",
+        }:
+            raise ValueError(f"Forbidden introspection call: '{node.func.id}'")
         self.generic_visit(node)
 
 

@@ -40,6 +40,9 @@ def apply(ctx: Context, **kwargs: Any) -> CodeActExecutor:
     if tools_svc is not None and hasattr(tools_svc, "register"):
         tools_svc.register(tool)
 
+    # Dispose the runner subprocess when the component's fiber unloads.
+    ctx.fiber.effect(executor.dispose, label="codeact.executor.dispose")
+
     return executor
 
 

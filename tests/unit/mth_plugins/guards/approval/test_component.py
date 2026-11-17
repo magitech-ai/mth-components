@@ -54,7 +54,7 @@ async def test_component_apply_and_waterfalls(tmp_path: Path) -> None:
 
     # 1. Test approval/request waterfall
     req = ApprovalRequest(
-        tool_name="write_file", arguments={"path": "foo.txt"}, digest="sha256:digest"
+        toolName="write_file", arguments={"path": "foo.txt"}, digest="sha256:digest"
     )
     verdict = await ctx.waterfall(
         "approval/request", req, default_handler=lambda r: False
@@ -71,7 +71,7 @@ async def test_component_apply_and_waterfalls(tmp_path: Path) -> None:
         )
     )
     apply(ctx, workspace_root=tmp_path, presenter=presenter_deny)
-    req_deny = ApprovalRequest(tool_name="bash", arguments={}, digest="sha256:deny")
+    req_deny = ApprovalRequest(toolName="bash", arguments={}, digest="sha256:deny")
     verdict_deny = await ctx.waterfall(
         "approval/request", req_deny, default_handler=lambda r: True
     )

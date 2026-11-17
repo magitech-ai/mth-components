@@ -44,10 +44,11 @@ async def test_gate_project_cached_decisions(tmp_path: Path) -> None:
 async def test_gate_prompt_user_approval_flow(tmp_path: Path) -> None:
     ctx = Context()
     mock_approvals = AsyncMock(spec=ApprovalService)
-    ctx._register_service("approvals", mock_approvals)
+    ctx._register_service("approval", mock_approvals)
 
     store = TrustStore(tmp_path / "trust.json")
     gate = WorkspaceTrustGate(ctx, {"store": store})
+    gate.agent = object()  # type: ignore[attr-defined]
 
     project_dir = tmp_path / "promptee"
     agents_dir = project_dir / ".agents"
@@ -55,19 +56,19 @@ async def test_gate_prompt_user_approval_flow(tmp_path: Path) -> None:
     (agents_dir / "tool.py").write_text("# code")
 
     # 1. User approves
-    mock_approvals.request_approval.return_value = True
+    mock_approvals.request.return_value = "allowed-once"
     assert await gate.check_project_trust(project_dir, prompt_user=True) is True
-    mock_approvals.request_approval.assert_awaited_once()
+    mock_approvals.request.assert_awaited_once()
 
     # Now exact trust is cached
-    mock_approvals.request_approval.reset_mock()
+    mock_approvals.request.reset_mock()
     assert await gate.check_project_trust(project_dir) is True
-    mock_approvals.request_approval.assert_not_awaited()
+    mock_approvals.request.assert_not_awaited()
 
     # 2. User declines next project
     proj_2 = tmp_path / "declined_project"
     (proj_2 / ".agents").mkdir(parents=True)
     (proj_2 / ".agents" / "x.py").write_text("x")
 
-    mock_approvals.request_approval.return_value = False
+    mock_approvals.request.return_value = "rejected"
     assert await gate.check_project_trust(proj_2, prompt_user=True) is False

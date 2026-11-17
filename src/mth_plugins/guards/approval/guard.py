@@ -45,14 +45,15 @@ class ApprovalGuard:
         global_policy_path: Path | None = None,
         presenter: ApprovalPresenter | None = None,
         require_all_mutations: bool = True,
+        *,
+        persist_project_grants: bool = False,
     ) -> None:
         self.ctx = ctx
         self.workspace_policy_path = workspace_policy_path
         self.global_policy_path = global_policy_path
         self.presenter = presenter
         self.require_all_mutations = require_all_mutations
-        self._session_grants: dict[str, bool] = {}
-
+        self.persist_project_grants = persist_project_grants
         self.workspace_policy = (
             ApprovalPolicy.load(workspace_policy_path)
             if workspace_policy_path
@@ -70,10 +71,6 @@ class ApprovalGuard:
 
     async def evaluate_request(self, request: ApprovalRequest) -> bool:
         """Evaluates an ApprovalRequest against layered policies and presenter."""
-        # Check in-memory session grants by tool or digest
-        if request.digest in self._session_grants:
-            return self._session_grants[request.digest]
-
         # 1. Project / Workspace policy (highest precedence)
         decision = self.workspace_policy.evaluate(request)
 
@@ -94,31 +91,22 @@ class ApprovalGuard:
                 )
                 return False
 
-            if (
-                not isinstance(user_decision, ApprovalDecision)
-                or user_decision.request_digest != request.digest
-            ):
+            if not isinstance(
+                user_decision, ApprovalDecision
+            ) or user_decision.request_digest != request.get("digest", ""):
                 logger.warning(
                     "Invalid or stale approval decision; denying fail-closed"
                 )
                 return False
 
             if user_decision.outcome is ApprovalOutcome.ALLOW:
-                if user_decision.scope in (
-                    ApprovalScope.SESSION,
-                    ApprovalScope.PROJECT,
-                ):
-                    self._session_grants[request.digest] = True
-                    approvals_svc = getattr(self.ctx, "approvals", None)
-                    if approvals_svc is not None and hasattr(approvals_svc, "remember"):
-                        approvals_svc.remember(request.digest, True)
-
                 if (
-                    user_decision.scope is ApprovalScope.PROJECT
+                    self.persist_project_grants
+                    and user_decision.scope is ApprovalScope.PROJECT
                     and self.workspace_policy_path is not None
                 ):
                     rule = PolicyRule(
-                        tool_pattern=request.tool_name,
+                        tool_pattern=request["toolName"],
                         outcome=ApprovalOutcome.ALLOW,
                     )
                     self.workspace_policy.save_rule(self.workspace_policy_path, rule)
@@ -140,14 +128,24 @@ class ApprovalGuard:
         if self.require_all_mutations and tool_call.name in SAFE_READ_TOOLS:
             return await next_fn(tool_call)
 
-        approvals_svc = getattr(self.ctx, "approvals", None)
-        if approvals_svc is not None and hasattr(approvals_svc, "request_approval"):
-            verdict = await approvals_svc.request_approval(
-                tool_call.name,
-                tool_call.arguments,
-                description=f"Invocation of tool '{tool_call.name}'",
-            )
-            if not verdict:
+        approval_svc = getattr(self.ctx, "approval", None)
+        if approval_svc is not None:
+            try:
+                agent = getattr(tool_call, "agent", None)
+            except (AttributeError, ValueError):
+                agent = None
+            if agent is None:
+                raise PermissionError(
+                    f"Approval denied for tool '{tool_call.name}': "
+                    "no agent to audit against"
+                )
+            req = {
+                "agent": agent,
+                "toolName": tool_call.name,
+                "displayReason": {"en": f"Invocation of tool '{tool_call.name}'"},
+            }
+            verdict = await approval_svc.request(req)
+            if verdict != "allowed-once":
                 raise PermissionError(f"Approval denied for tool '{tool_call.name}'.")
 
         return await next_fn(tool_call)

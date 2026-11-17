@@ -78,7 +78,7 @@ outcome = "allow"
 
     # 1. Exact match on read_file
     req1 = ApprovalRequest(
-        tool_name="read_file",
+        toolName="read_file",
         arguments={"path": "foo.py"},
         digest="sha256:111",
     )
@@ -91,7 +91,7 @@ outcome = "allow"
 
     # 2. Bash with pytest command -> allow
     req2 = ApprovalRequest(
-        tool_name="bash",
+        toolName="bash",
         arguments={"command": "pytest -v"},
         digest="sha256:222",
     )
@@ -101,7 +101,7 @@ outcome = "allow"
 
     # 3. Bash with rm -rf command -> deny
     req3 = ApprovalRequest(
-        tool_name="bash",
+        toolName="bash",
         arguments={"command": "rm -rf /tmp/data"},
         digest="sha256:333",
     )
@@ -111,7 +111,7 @@ outcome = "allow"
 
     # 4. Bash with argument missing "command"
     req_no_arg = ApprovalRequest(
-        tool_name="bash",
+        toolName="bash",
         arguments={"cwd": "/tmp"},
         digest="sha256:444",
     )
@@ -119,7 +119,7 @@ outcome = "allow"
 
     # 5. Bash with non-matching command
     req_other = ApprovalRequest(
-        tool_name="bash",
+        toolName="bash",
         arguments={"command": "ls -la"},
         digest="sha256:555",
     )
@@ -127,7 +127,7 @@ outcome = "allow"
 
     # 6. Glob match on fs_*
     req_glob = ApprovalRequest(
-        tool_name="fs_write",
+        toolName="fs_write",
         arguments={},
         digest="sha256:666",
     )
@@ -137,7 +137,7 @@ outcome = "allow"
 
     # 7. Unmatched tool
     req_unknown = ApprovalRequest(
-        tool_name="unknown_tool",
+        toolName="unknown_tool",
         arguments={},
         digest="sha256:777",
     )
@@ -152,7 +152,7 @@ def test_evaluate_invalid_regex(tmp_path: Path) -> None:
     )
     policy = ApprovalPolicy([rule])
     req = ApprovalRequest(
-        tool_name="bash",
+        toolName="bash",
         arguments={"command": "echo test"},
         digest="sha256:888",
     )

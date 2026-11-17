@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from anima import Context, Service
 
@@ -18,6 +19,7 @@ class WorkspaceTrustGate(Service):
 
     def __init__(self, ctx: Context, config: dict | None = None) -> None:
         super().__init__(ctx, "trust")
+        self.agent: Any | None = None
         cfg = config or {}
         store: TrustStore | None = cfg.get("store")
         store_path: Path | str | None = cfg.get("store_path")
@@ -56,14 +58,20 @@ class WorkspaceTrustGate(Service):
             return False
 
         # Decision is UNSPECIFIED
-        if prompt_user and self.ctx.has("approvals"):
+        if (
+            prompt_user
+            and self.ctx.has("approval")
+            and getattr(self, "agent", None) is not None
+        ):
             logger.info("Prompting user for workspace trust verdict on %s", proj_dir)
-            verdict = await self.ctx.approvals.request_approval(
-                tool_name="workspace_trust",
-                arguments={"project": str(proj_dir), "tree_hash": current_hash},
-                description=f"Trust workspace configuration for '{proj_dir.name}'?",
+            verdict = await self.ctx.approval.request(
+                {
+                    "agent": self.agent,
+                    "toolName": "workspace_trust",
+                    "reason": f"Trust workspace configuration for '{proj_dir.name}'?",
+                }
             )
-            if verdict:
+            if verdict == "allowed-once":
                 self.store.set_decision(
                     proj_dir, TrustDecision.TRUST_EXACT, current_hash
                 )

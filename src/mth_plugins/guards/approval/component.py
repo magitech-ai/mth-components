@@ -51,4 +51,4 @@ def apply(
     ctx.on("tools/pre-execute", _on_tools_pre_execute)
 
 
-apply.inject = ["approvals", "tools"]  # type: ignore[attr-defined]
+apply.inject = ["approval", "tools"]  # type: ignore[attr-defined]
