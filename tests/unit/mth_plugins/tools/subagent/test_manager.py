@@ -5,15 +5,16 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, ClassVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from anima import Context
 from magitech_harness import create_harness as real_create_harness
 from magitech_harness.agent.cancellation import AbortSignal
-from magitech_harness.agent.loop import AgentLoopService
 from magitech_harness.llm.service import LLMService, MockLLMProvider
+from magitech_harness.session.events import EventType
 from magitech_harness.session.service import SessionService
 from magitech_harness.tools.definition import Tool
 from magitech_harness.tools.service import ToolService
@@ -22,31 +23,50 @@ from mth_plugins.tools.subagent.manager import SubagentManager
 from mth_plugins.tools.subagent.types import SubagentSpec, SubagentState
 
 
-class MockLoop(AgentLoopService):
-    def __init__(self, ctx: Context, return_value: str = "Turn result") -> None:
-        super().__init__(ctx)
+class MockTurn:
+    """Scripted turn outcome for the unified child agent driver."""
+
+    def __init__(self, return_value: str = "Turn result") -> None:
         self.return_value = return_value
         self.raise_exc: Exception | None = None
 
-    async def run_turn(
-        self,
-        session: Any,
-        user_input: str,
-        *,
-        model: str | None = None,
-        max_steps: int = 10,
-        signal: AbortSignal | None = None,
-    ) -> str:
-        if self.raise_exc:
-            raise self.raise_exc
-        return self.return_value
+
+class _MockChildAgent:
+    def __init__(self, ctx: Any, session: Any, turn: MockTurn) -> None:
+        self.session = session
+        self._turn = turn
+        self.model = SimpleNamespace(current=lambda: None, select=lambda _sel: None)
+
+    def followup(self, message: Any) -> None:
+        pass
+
+    async def when_idle(self) -> None:
+        if self._turn.raise_exc:
+            raise self._turn.raise_exc
+        # Append turn/start + assistant message so the outcome text is deterministic.
+        self.session.append(EventType.TURN_START, {"turn": 1})
+        self.session.append(
+            EventType.ASSISTANT_MESSAGE,
+            {
+                "turn": 1,
+                "step": 1,
+                "stream": [],
+                "message": {
+                    "id": "mock-assistant",
+                    "role": "assistant",
+                    "source": {"kind": "model", "provider": "mock", "model": "mock"},
+                    "content": [{"type": "text", "text": self._turn.return_value}],
+                },
+            },
+            surface_op="append",
+        )
 
 
 def _bundle_child_factory(
     return_value: str = "Turn result",
     raise_exc: Exception | None = None,
     captured: list[Context] | None = None,
-    loops: list[MockLoop] | None = None,
+    turns: list[MockTurn] | None = None,
 ) -> Callable[..., Context]:
     """Replacement for manager.create_harness: real bundle ctx, mock loop.
 
@@ -57,12 +77,35 @@ def _bundle_child_factory(
 
     def _factory(storage_dir: Path | str | None = None, **kwargs: Any) -> Context:
         ctx = real_create_harness(storage_dir=storage_dir)
-        loop = MockLoop(ctx, return_value)
-        loop.raise_exc = raise_exc
+        turn = MockTurn(return_value)
+        turn.raise_exc = raise_exc
         if captured is not None:
             captured.append(ctx)
-        if loops is not None:
-            loops.append(loop)
+        if turns is not None:
+            turns.append(turn)
+
+        async def _fake_create(options: Any) -> Any:
+            session_id = str(options.get("sessionId", "mock-child"))
+            session = ctx.sessions.get(session_id)
+            if session is None:
+                # The driver prepares a fresh session after the pre-created
+                # one was closed; resume it from persistence if available.
+                session = ctx.sessions.load(session_id)
+            if session is None:
+                session = ctx.sessions.create(session_id)
+            agent = _MockChildAgent(ctx, session, turn)
+            return {"agent": agent, "dispose": lambda: None}
+
+        # Patch after the bundle settles: ``agents`` only exists post-flush,
+        # so mount a tiny component whose apply() runs during flush.
+        class _PatchAgents:
+            inject: ClassVar[list[str]] = ["agents"]
+
+            def __init__(self, c: Context) -> None:
+                c.agents.create = _fake_create  # type: ignore[method-assign]
+                c.agents.resume = _fake_create  # type: ignore[method-assign]
+
+        ctx.use(_PatchAgents)
         return ctx
 
     return _factory
@@ -142,11 +185,11 @@ async def test_subagent_manager_invoke_background_and_send_message(
 ) -> None:
     manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})
 
-    loop_instances: list[MockLoop] = []
+    turn_instances: list[MockTurn] = []
 
     with patch(
         "mth_plugins.tools.subagent.manager.create_harness",
-        side_effect=_bundle_child_factory("Turn 1 done", loops=loop_instances),
+        side_effect=_bundle_child_factory("Turn 1 done", turns=turn_instances),
     ):
         # Background execution (wait=False)
         spec = SubagentSpec(role="assistant", prompt="Background work", wait=False)
@@ -159,7 +202,7 @@ async def test_subagent_manager_invoke_background_and_send_message(
         assert rec.state == SubagentState.COMPLETED
 
         # Send follow-up message
-        loop_instances[0].return_value = "Follow up done"
+        turn_instances[0].return_value = "Follow up done"
         rec_after = await manager.send_message(rec.subagent_id, "Next instruction")
         assert rec_after.summary == "Follow up done"
 
@@ -295,7 +338,7 @@ async def test_subagent_manager_manage_and_errors(
     # Delete refuses a live write handle, so the session is closed first.
     sid = recs[0].subagent_id
     child_ctx = manager._child_contexts[sid]
-    assert child_ctx.sessions.close(recs[0].session_id) is True
+    child_ctx.sessions.close(recs[0].session_id)
     assert child_ctx.sessions.delete(recs[0].session_id) is True
     await manager._run_child(sid, "another prompt")
     assert recs[0].state == SubagentState.ERRORED
@@ -477,3 +520,84 @@ async def test_child_with_parent_llm_without_providers(
     assert len(captured) == 1
     assert captured[0].llm.providers == {}
     assert captured[0].llm.active_provider is None
+
+
+@pytest.mark.asyncio
+async def test_child_agent_defaults_when_no_providers_and_with_signal(
+    parent_ctx: Context, tmp_path: Path
+) -> None:
+    """Covers provider fallback and signal forwarding on the unified driver."""
+
+    manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})
+    captured: list[Context] = []
+
+    def _factory(storage_dir: Path | str | None = None, **kwargs: Any) -> Context:
+        ctx = real_create_harness(storage_dir=storage_dir)
+        captured.append(ctx)
+        turn = MockTurn("ok")
+
+        async def _fake_create(options: Any) -> Any:
+            session = ctx.sessions.create(str(options.get("sessionId", "child")))
+            agent = _MockChildAgent(ctx, session, turn)
+            return {"agent": agent, "dispose": lambda: None}
+
+        class _NoAdapterPatch:
+            inject: ClassVar[list[str]] = ["agents"]
+
+            def __init__(self, c: Context) -> None:
+                c.agents.create = _fake_create  # type: ignore[method-assign]
+                c.agents.resume = _fake_create  # type: ignore[method-assign]
+
+        ctx.use(_NoAdapterPatch)
+        return ctx
+
+    signal = AbortSignal()
+    with patch(
+        "mth_plugins.tools.subagent.manager.create_harness", side_effect=_factory
+    ):
+        recs = await manager.invoke(
+            [SubagentSpec(role="worker", prompt="Do work", wait=True)],
+            parent_signal=signal,
+        )
+    assert recs[0].state == SubagentState.COMPLETED
+    assert recs[0].summary == "ok"
+
+
+@pytest.mark.asyncio
+async def test_child_agent_with_model_slug(parent_ctx: Context, tmp_path: Path) -> None:
+    """Covers the model slug (provider/model) branch on the unified driver."""
+    manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})
+
+    def _factory(storage_dir: Path | str | None = None, **kwargs: Any) -> Context:
+        ctx = real_create_harness(storage_dir=storage_dir)
+        turn = MockTurn("ok")
+
+        async def _fake_create(options: Any) -> Any:
+            session = ctx.sessions.create(str(options.get("sessionId", "child")))
+            agent = _MockChildAgent(ctx, session, turn)
+            return {"agent": agent, "dispose": lambda: None}
+
+        class _Patch:
+            inject: ClassVar[list[str]] = ["agents"]
+
+            def __init__(self, c: Context) -> None:
+                c.agents.create = _fake_create  # type: ignore[method-assign]
+                c.agents.resume = _fake_create  # type: ignore[method-assign]
+
+        ctx.use(_Patch)
+        return ctx
+
+    with patch(
+        "mth_plugins.tools.subagent.manager.create_harness", side_effect=_factory
+    ):
+        recs = await manager.invoke(
+            [
+                SubagentSpec(
+                    role="worker",
+                    prompt="Do work",
+                    model="deepseek/deepseek-chat",
+                    wait=True,
+                )
+            ]
+        )
+    assert recs[0].state == SubagentState.COMPLETED

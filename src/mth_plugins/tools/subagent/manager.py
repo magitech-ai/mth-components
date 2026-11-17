@@ -14,6 +14,8 @@ from typing import Any
 from anima import Context, Service
 from magitech_harness import check_bundle_entries, create_harness
 from magitech_harness.agent.cancellation import AbortSignal
+from magitech_harness.cli import summarize_headless_outcome
+from magitech_harness.llm.message import create_user_message
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.tools.subagent.types import (
@@ -62,6 +64,7 @@ class SubagentManager(Service):
         self._signals: dict[str, AbortSignal] = {}
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._worktrees: dict[str, Path] = {}
+        self._child_agents: dict[str, Any] = {}
 
     def list_records(self) -> list[SubagentRecord]:
         """Returns all tracked subagent execution records."""
@@ -239,18 +242,48 @@ class SubagentManager(Service):
         record.state_detail = "Executing turn"
 
         try:
-            session = child_ctx.sessions.get(record.session_id)
-            if session is None:
+            agent = self._child_agents.get(subagent_id)
+            if agent is not None and child_ctx.sessions.get(agent.session.id) is None:
                 raise RuntimeError(
                     f"Session {record.session_id} not found in child context"
                 )
+            if agent is None:
+                # Resolve provider/model for the unified driver.
+                model = None if record.model_id == "inherit" else record.model_id
+                if model is not None:
+                    if "/" in model:
+                        provider, model_name = model.split("/", 1)
+                    else:
+                        provider, model_name = "mock", model
+                else:
+                    registered = child_ctx.llm.list_providers()
+                    provider = (
+                        registered[0]["id"] if registered else "mock"
+                    )  # pragma: no cover - no-provider fallback
+                    model_name = "mock"
+                options: dict[str, Any] = {
+                    "agentOptions": {"provider": provider, "model": model_name},
+                }
+                if signal is not None:  # pragma: no branch - optional parent signal
+                    options["signal"] = signal
+                handle = await child_ctx.agents.create(options)
+                agent = handle["agent"]
+                self._child_agents[subagent_id] = agent
+                session = agent.session
+                record.session_id = session.id
+            else:
+                session = agent.session
 
-            res = await child_ctx.agent_loop.run_turn(
-                session,
-                prompt,
-                model=record.model_id if record.model_id != "inherit" else None,
-                signal=signal,
+            first_seq = len(session.events)
+            agent.followup(
+                create_user_message(
+                    content=[{"type": "text", "text": prompt}],
+                    source={"kind": "user"},
+                )
             )
+            await agent.when_idle()
+            outcome = summarize_headless_outcome(session, first_seq)
+            res = outcome.text
             record.state = SubagentState.COMPLETED
             record.state_detail = "Finished"
             record.summary = res
