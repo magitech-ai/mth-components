@@ -10,8 +10,12 @@ from magitech_harness.session.events import ToolCallData
 from magitech_harness.system_prompt.service import SystemPromptService
 from magitech_harness.tools.service import ToolService
 
-from mth_plugins.tools.read_file.component import apply
-from mth_plugins.tools.read_file.read_file import handle_read_file
+from mth_plugins.tools.read_file.component import MAX_LIMIT, apply
+from mth_plugins.tools.read_file.read_file import (
+    DEFAULT_LIMIT,
+    _validate_limit,
+    handle_read_file,
+)
 
 
 @pytest.mark.asyncio
@@ -25,9 +29,9 @@ async def test_handle_read_file_validation(tmp_path: Path) -> None:
     res = await handle_read_file({"path": "foo.txt", "offset": 0})
     assert "Invalid offset" in res
 
-    # Invalid limit
-    res = await handle_read_file({"path": "foo.txt", "limit": 0})
-    assert "Invalid limit" in res
+    # Limit below 1 raises
+    with pytest.raises(ValueError, match="Must be 1 or greater"):
+        await handle_read_file({"path": "foo.txt", "limit": 0})
 
     # Nonexistent file
     res = await handle_read_file({"path": str(tmp_path / "nonexistent.txt")})
@@ -38,6 +42,54 @@ async def test_handle_read_file_validation(tmp_path: Path) -> None:
     dir_path.mkdir()
     res = await handle_read_file({"path": str(dir_path)})
     assert "Cannot read directory" in res
+
+
+@pytest.mark.asyncio
+async def test_handle_read_file_limit_validation() -> None:
+    """Verifies limit resolution: default, clamp, and validation."""
+    # No limit -> default
+    assert _validate_limit(None, DEFAULT_LIMIT, MAX_LIMIT) == DEFAULT_LIMIT
+    # Non-int limit -> default
+    assert _validate_limit("not-a-number", DEFAULT_LIMIT, MAX_LIMIT) == DEFAULT_LIMIT
+    # Limit within bounds passes
+    assert _validate_limit(100, DEFAULT_LIMIT, MAX_LIMIT) == 100
+    # Limit below 1 raises
+    with pytest.raises(ValueError, match="Must be 1 or greater"):
+        _validate_limit(0, DEFAULT_LIMIT, MAX_LIMIT)
+    # Limit above max raises
+    with pytest.raises(ValueError, match=f"Must not exceed {MAX_LIMIT}"):
+        _validate_limit(MAX_LIMIT + 1, DEFAULT_LIMIT, MAX_LIMIT)
+
+
+@pytest.mark.asyncio
+async def test_handle_read_file_default_limit_applied(tmp_path: Path) -> None:
+    """Verifies default_limit caps reads when no limit is supplied."""
+    text_file = tmp_path / "many_lines.txt"
+    lines = [f"line {i}" for i in range(DEFAULT_LIMIT + 50)]
+    text_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    res = await handle_read_file({"path": str(text_file)})
+    result_lines = res.split("\n")
+    assert len(result_lines) == DEFAULT_LIMIT
+
+
+@pytest.mark.asyncio
+async def test_handle_read_file_config_limits(tmp_path: Path) -> None:
+    """Verifies config-driven default_limit and max_limit."""
+    text_file = tmp_path / "sample.txt"
+    text_file.write_text("line1\nline2\nline3\nline4\n", encoding="utf-8")
+
+    # Custom default_limit smaller than file
+    res = await handle_read_file(
+        {"path": str(text_file)}, default_limit=2, max_limit=100
+    )
+    assert res == "line1\nline2"
+
+    # Custom max_limit: requesting above it raises
+    with pytest.raises(ValueError, match="Must not exceed 5"):
+        await handle_read_file(
+            {"path": str(text_file), "limit": 10}, default_limit=100, max_limit=5
+        )
 
 
 @pytest.mark.asyncio
@@ -69,7 +121,7 @@ async def test_handle_read_file_pagination(tmp_path: Path) -> None:
     text_file = tmp_path / "sample.txt"
     text_file.write_text("line1\nline2\nline3\nline4\n", encoding="utf-8")
 
-    # Read full file
+    # Read full file (under default limit)
     res = await handle_read_file({"path": str(text_file)})
     assert res == "line1\nline2\nline3\nline4"
 
@@ -108,3 +160,37 @@ async def test_read_component_integration(tmp_path: Path) -> None:
     res_read = await ctx.tools.execute(call_read)
     assert not res_read.is_error
     assert res_read.content == "Read me successfully"
+
+
+@pytest.mark.asyncio
+async def test_read_component_registers_system_prompt_section(tmp_path: Path) -> None:
+    """Verifies the component registers tool:read_file prompt guidance."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    ctx.use(apply)
+    await ctx.flush()
+
+    # Section order should resolve to TOOL_READ (1100)
+    assert ctx.systemPrompt.get_section_order("TOOL_READ") == 1100
+
+
+@pytest.mark.asyncio
+async def test_read_component_without_system_prompt_service(tmp_path: Path) -> None:
+    """Verifies the component mounts and skips section when systemPrompt absent."""
+    ctx = Context()
+    # Register a minimal tools service directly so apply's inject=["tools"] is
+    # satisfied without mounting ToolService (which requires systemPrompt).
+    fake_tools = type(
+        "FakeTools",
+        (),
+        {"register": lambda self, tool: None},
+    )()
+    ctx.reflect.provide("tools", fake_tools, None)
+    await ctx.flush()
+
+    ctx.use(apply)
+    await ctx.flush()
+
+    # Component ran without crashing; section registration was skipped.
+    assert ctx.has("tools")
