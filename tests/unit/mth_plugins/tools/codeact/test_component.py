@@ -30,6 +30,22 @@ async def test_component_apply_and_execute() -> None:
     assert result.content == "100"
 
 
+@pytest.mark.asyncio
+async def test_component_rejects_blank_code() -> None:
+    """Verifies whitespace-only code is rejected without spawning a subprocess."""
+    ctx = Context()
+    tools = ToolService(ctx)
+    apply(ctx)
+    call = ToolCallData(
+        call_id="c_blank",
+        name="execute_python",
+        arguments={"code": "   \n  \t  "},
+    )
+    result = await tools.execute(call)
+    assert result.is_error is False
+    assert "required" in result.content
+
+
 def test_component_apply_without_tool_service() -> None:
     ctx = Context()
     executor = apply(ctx)
