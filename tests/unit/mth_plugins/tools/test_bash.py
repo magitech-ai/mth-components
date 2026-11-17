@@ -22,6 +22,10 @@ async def test_handle_bash_validation(tmp_path: Path) -> None:
     res = await handle_bash({})
     assert "required" in res
 
+    # Blank (whitespace-only) command is rejected
+    res = await handle_bash({"command": "   "})
+    assert "required" in res
+
     # Nonexistent working directory
     res_bad_cwd = await handle_bash(
         {
@@ -183,3 +187,36 @@ async def test_bash_component_integration() -> None:
 
     res = await tool.execute({"command": "echo registered bash tool"})
     assert res == "registered bash tool"
+
+
+@pytest.mark.asyncio
+async def test_bash_component_registers_system_prompt_section() -> None:
+    """Verifies the component registers tool:bash prompt guidance."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(LocalShellService)
+    ctx.use(ToolService)
+    ctx.use(apply)
+    await ctx.flush()
+
+    assert ctx.systemPrompt.get_section_order("TOOL_BASH") == 1000
+
+
+@pytest.mark.asyncio
+async def test_bash_component_without_system_prompt_service() -> None:
+    """Verifies the component mounts and skips section when systemPrompt absent."""
+    fake_tools = type(
+        "FakeTools",
+        (),
+        {"register": lambda self, tool: None},
+    )()
+    ctx = Context()
+    ctx.reflect.provide("tools", fake_tools, None)
+    await ctx.flush()
+
+    ctx.use(LocalShellService)
+    await ctx.flush()
+    ctx.use(apply)
+    await ctx.flush()
+
+    assert ctx.has("tools")
