@@ -6,6 +6,8 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
+DEFAULT_LIMIT = 2000
+MAX_LIMIT = 2000
 _BINARY_PROBE_BYTES = 8192
 
 
@@ -16,19 +18,39 @@ def _split_file_lines(text: str) -> list[str]:
     return lines
 
 
-async def handle_read_file(args: dict[str, Any]) -> str:
-    """Reads a file with optional 1-indexed line offset and limit pagination."""
+def _validate_limit(limit: Any, default_limit: int, max_limit: int) -> int | None:
+    """Resolve and validate the requested line limit."""
+    if limit is None:
+        return default_limit
+    if not isinstance(limit, int) or isinstance(limit, bool):
+        return default_limit
+    if limit < 1:
+        raise ValueError(f"Invalid limit '{limit}'. Must be 1 or greater.")
+    if limit > max_limit:
+        raise ValueError(f"Invalid limit '{limit}'. Must not exceed {max_limit}.")
+    return limit
+
+
+async def handle_read_file(
+    args: dict[str, Any],
+    *,
+    default_limit: int = DEFAULT_LIMIT,
+    max_limit: int = MAX_LIMIT,
+) -> str:
+    """Reads a file with optional 1-indexed line offset and limit pagination.
+
+    When no ``limit`` is supplied, ``default_limit`` applies; a ``limit`` above
+    ``max_limit`` fails loud, matching the reference fs/tool-fs read tool caps.
+    """
     path_str = args.get("path")
     if not path_str:
         return "Error: 'path' argument is required."
 
     offset = args.get("offset")
-    limit = args.get("limit")
+    limit = _validate_limit(args.get("limit"), default_limit, max_limit)
 
     if offset is not None and offset < 1:
         return f"Error: Invalid offset '{offset}'. Must be 1 or greater."
-    if limit is not None and limit < 1:
-        return f"Error: Invalid limit '{limit}'. Must be 1 or greater."
 
     file_path = Path(path_str)
     if not file_path.exists():
