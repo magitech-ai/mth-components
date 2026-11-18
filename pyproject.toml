@@ -1,3 +1,6 @@
+[project.entry-points."magitech.components"]
+mth-plugins = "mth_plugins.index:discover_installed"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

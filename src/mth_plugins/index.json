@@ -3,7 +3,7 @@
     "openrouter-provider": {
       "version": "0.1.0",
       "description": "Official OpenRouter provider realm for Magitech Harness",
-      "path": "src/mth_plugins/providers/openrouter",
+      "path": "providers/openrouter",
       "entry_point": "component.py:apply",
       "types": [
         "Provider"
@@ -13,7 +13,7 @@
     "pollinations-provider": {
       "version": "0.1.0",
       "description": "Free anonymous LLM model provider via Pollinations for Magitech Harness",
-      "path": "src/mth_plugins/providers/pollinations",
+      "path": "providers/pollinations",
       "entry_point": "component.py:apply",
       "types": [
         "Provider"
@@ -25,7 +25,7 @@
     "bash-tool": {
       "version": "0.1.0",
       "description": "Subprocess shell execution tool for Magitech Harness",
-      "path": "src/mth_plugins/tools/bash",
+      "path": "tools/bash",
       "entry_point": "component.py:apply",
       "types": [
         "Tool"
@@ -35,7 +35,7 @@
     "codeact-tool": {
       "version": "0.1.0",
       "description": "Sandboxed CodeAct Python execution environment with AST write-protection and tool auto-dispatching for Magitech Harness",
-      "path": "src/mth_plugins/tools/codeact",
+      "path": "tools/codeact",
       "entry_point": "component.py:apply",
       "types": [
         "Tool"
@@ -45,7 +45,7 @@
     "edit-file-tool": {
       "version": "0.1.0",
       "description": "Replace target string with replacement string in a file for Magitech Harness",
-      "path": "src/mth_plugins/tools/edit_file",
+      "path": "tools/edit_file",
       "entry_point": "component.py:apply",
       "types": [
         "Tool"
@@ -55,7 +55,7 @@
     "fs-search-tool": {
       "version": "0.1.0",
       "description": "Tier 1 filesystem search tools (glob and grep) for Magitech Harness",
-      "path": "src/mth_plugins/tools/fs_search",
+      "path": "tools/fs_search",
       "entry_point": "component.py:apply",
       "types": [
         "Tool"
@@ -65,7 +65,7 @@
     "read-file-tool": {
       "version": "0.1.0",
       "description": "Read file contents with line offset and limit pagination for Magitech Harness",
-      "path": "src/mth_plugins/tools/read_file",
+      "path": "tools/read_file",
       "entry_point": "component.py:apply",
       "types": [
         "Tool"
@@ -75,7 +75,7 @@
     "subagent-tool": {
       "version": "0.1.0",
       "description": "In-process subagent orchestration triad with workspace isolation and cancellation cascading for Magitech Harness",
-      "path": "src/mth_plugins/tools/subagent",
+      "path": "tools/subagent",
       "entry_point": "component.py:apply",
       "types": [
         "Tool"
@@ -85,7 +85,7 @@
     "write-file-tool": {
       "version": "0.1.0",
       "description": "Write text content to a file, creating parent directories for Magitech Harness",
-      "path": "src/mth_plugins/tools/write_file",
+      "path": "tools/write_file",
       "entry_point": "component.py:apply",
       "types": [
         "Tool"
@@ -97,7 +97,7 @@
     "approval-guard": {
       "version": "0.1.0",
       "description": "Layered fail-closed approval policy guardrail and authorization broker for Magitech Harness",
-      "path": "src/mth_plugins/guards/approval",
+      "path": "guards/approval",
       "entry_point": "component.py:apply",
       "types": [
         "Guard"
@@ -107,27 +107,7 @@
     "compaction-guard": {
       "version": "0.1.0",
       "description": "Context compaction guardrail and slash command component for Magitech Harness",
-      "path": "src/mth_plugins/guards/compaction",
-      "entry_point": "component.py:apply",
-      "types": [
-        "Guard"
-      ],
-      "enabled": true
-    },
-    "truncation-guard": {
-      "version": "0.1.0",
-      "description": "Output truncation guardrail (tools/post-execute waterfall) for Magitech Harness",
-      "path": "src/mth_plugins/guards/truncation",
-      "entry_point": "component.py:apply",
-      "types": [
-        "Guard"
-      ],
-      "enabled": true
-    },
-    "workspace-trust-gate": {
-      "version": "0.1.0",
-      "description": "Workspace trust verification and integrity gate for Magitech Harness",
-      "path": "src/mth_plugins/guards/trust",
+      "path": "guards/compaction",
       "entry_point": "component.py:apply",
       "types": [
         "Guard"
@@ -137,7 +117,7 @@
     "repeat-tool-reminder": {
       "version": "0.1.0",
       "description": "Advisory loop-hygiene guard that nudges the model out of identical tool-call loops (tools/post-execute waterfall) for Magitech Harness",
-      "path": "src/mth_plugins/guards/repeat_tool_reminder",
+      "path": "guards/repeat_tool_reminder",
       "entry_point": "component.py:apply",
       "types": [
         "Guard"
@@ -147,7 +127,27 @@
     "timeout-policy": {
       "version": "0.1.0",
       "description": "Cooperative time limit for cancellation-aware tool calls (tools/execute waterfall) for Magitech Harness",
-      "path": "src/mth_plugins/guards/timeout_policy",
+      "path": "guards/timeout_policy",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Guard"
+      ],
+      "enabled": true
+    },
+    "truncation-guard": {
+      "version": "0.1.0",
+      "description": "Output truncation guardrail (tools/post-execute waterfall) for Magitech Harness",
+      "path": "guards/truncation",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Guard"
+      ],
+      "enabled": true
+    },
+    "workspace-trust-gate": {
+      "version": "0.1.0",
+      "description": "Workspace trust verification and integrity gate for Magitech Harness",
+      "path": "guards/trust",
       "entry_point": "component.py:apply",
       "types": [
         "Guard"
@@ -156,21 +156,10 @@
     }
   },
   "bridges": {
-    "workspace-snapshot": {
-      "version": "0.1.0",
-      "description": "Shadow Git repository turn snapshotting, diffing, and restoration for Magitech Harness",
-      "path": "src/mth_plugins/bridges/workspace_snapshot",
-      "entry_point": "component.py:apply",
-      "types": [
-        "Bridge",
-        "Tool"
-      ],
-      "enabled": true
-    },
     "lsp-bridge": {
       "version": "0.1.0",
       "description": "Language Server Protocol (LSP) diagnostics and code intelligence bridge for Magitech Harness",
-      "path": "src/mth_plugins/bridges/lsp",
+      "path": "bridges/lsp",
       "entry_point": "component.py:apply",
       "types": [
         "Bridge",
@@ -181,7 +170,7 @@
     "mcp-bridge": {
       "version": "0.1.0",
       "description": "Model Context Protocol (MCP) client bridge for Magitech Harness",
-      "path": "src/mth_plugins/bridges/mcp",
+      "path": "bridges/mcp",
       "entry_point": "component.py:apply",
       "types": [
         "Bridge"
@@ -191,7 +180,7 @@
     "opentelemetry-bridge": {
       "version": "0.1.0",
       "description": "OpenTelemetry distributed tracing instrumentation bridge conforming to GenAI semantic conventions for Magitech Harness",
-      "path": "src/mth_plugins/bridges/otel",
+      "path": "bridges/otel",
       "entry_point": "component.py:apply",
       "types": [
         "Bridge"
@@ -201,7 +190,7 @@
     "skills-bridge": {
       "version": "0.1.0",
       "description": "Progressive Agent Skills discovery and execution bridge for Magitech Harness",
-      "path": "src/mth_plugins/bridges/skills",
+      "path": "bridges/skills",
       "entry_point": "component.py:apply",
       "types": [
         "Bridge"
@@ -211,10 +200,21 @@
     "steering-bridge": {
       "version": "0.1.0",
       "description": "Hierarchical AGENTS.md steering and prompt scaffolding bridge for Magitech Harness",
-      "path": "src/mth_plugins/bridges/steering",
+      "path": "bridges/steering",
       "entry_point": "component.py:apply",
       "types": [
         "Bridge"
+      ],
+      "enabled": true
+    },
+    "workspace-snapshot": {
+      "version": "0.1.0",
+      "description": "Shadow Git repository turn snapshotting, diffing, and restoration for Magitech Harness",
+      "path": "bridges/workspace_snapshot",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Bridge",
+        "Tool"
       ],
       "enabled": true
     }
@@ -223,7 +223,7 @@
     "sandbox-ladder": {
       "version": "0.1.0",
       "description": "Privilege ladder and Bubblewrap containment sandbox for Magitech Harness",
-      "path": "src/mth_plugins/sandbox",
+      "path": "sandbox",
       "entry_point": "component.py:apply",
       "types": [
         "Sandbox"
@@ -235,7 +235,7 @@
     "session-search": {
       "version": "0.1.0",
       "description": "Full-text SQLite FTS5 search across historical sessions, messages, and tool calls for Magitech Harness",
-      "path": "src/mth_plugins/sessions/search",
+      "path": "sessions/search",
       "entry_point": "component.py:apply",
       "types": [
         "Session",

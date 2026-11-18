@@ -9,10 +9,13 @@ import pytest
 from magitech_harness.components.manifest import ComponentManifest
 
 from mth_plugins.index import (
+    DEFAULT_INDEX_PATH,
+    PACKAGE_ROOT,
     REPO_ROOT,
     ComponentArtifact,
     _determine_kind,
     build_catalog,
+    discover_installed,
     find_component,
     load_index,
     scan_components,
@@ -202,3 +205,28 @@ def test_scan_and_find_components(tmp_path: Path) -> None:
 def test_index_json_matches_scanned_catalog() -> None:
     """index.json must equal the catalog derived from manifests."""
     assert load_index() == build_catalog()
+
+
+def test_index_json_is_package_data() -> None:
+    """index.json ships inside the package so load_index works from a wheel."""
+    assert DEFAULT_INDEX_PATH.parent == PACKAGE_ROOT
+    assert PACKAGE_ROOT.name == "mth_plugins"
+    assert DEFAULT_INDEX_PATH.is_file()
+
+
+def test_discover_installed_returns_mount_targets() -> None:
+    records = discover_installed()
+    assert records
+    fs = next((r for r in records if r["name"] == "fs-search-tool"), None)
+    assert fs is not None
+    assert fs["target"] == "mth_plugins.tools.fs_search.component:apply"
+    for record in records:
+        assert record["target"].startswith("mth_plugins.")
+        assert record["target"].endswith(":apply")
+
+
+def test_scan_default_root_is_package_root() -> None:
+    artifacts = scan_components(PACKAGE_ROOT)
+    names = {a.name for a in artifacts}
+    assert "bash-tool" in names
+    assert "fs-search-tool" in names
