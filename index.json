@@ -52,6 +52,16 @@
       ],
       "enabled": true
     },
+    "fs-search-tool": {
+      "version": "0.1.0",
+      "description": "Tier 1 filesystem search tools (glob and grep) for Magitech Harness",
+      "path": "src/mth_plugins/tools/fs_search",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Tool"
+      ],
+      "enabled": true
+    },
     "read-file-tool": {
       "version": "0.1.0",
       "description": "Read file contents with line offset and limit pagination for Magitech Harness",

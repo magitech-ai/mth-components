@@ -1,0 +1,13 @@
+{
+  "name": "fs-search-tool",
+  "version": "0.1.0",
+  "description": "Tier 1 filesystem search tools (glob and grep) for Magitech Harness",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Tool"
+  ],
+  "requires_services": [
+    "tools"
+  ],
+  "enabled": true
+}

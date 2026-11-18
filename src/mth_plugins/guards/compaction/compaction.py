@@ -149,15 +149,40 @@ async def summarize_events(
     return f"[Prior Context Summary]\n{joined_bullets}"
 
 
+def _safe_cut_by_tokens(events: list[SessionEvent], retain_tokens: int) -> int | None:
+    """Pick the event index whose tail keeps ~``retain_tokens`` verbatim.
+
+    Walks surface-bearing events from the end accumulating token estimates,
+    then hands the index to the pairing-safe boundary selector. This mirrors
+    the reference's ``selectCompactableRange`` retention tail.
+    """
+    if not events or retain_tokens <= 0:
+        return None
+    accumulated = 0
+    cut = len(events)
+    for index in range(len(events) - 1, -1, -1):
+        accumulated += estimate_history_tokens([events[index]])
+        if accumulated >= retain_tokens:
+            cut = index
+            break
+    # Keep at least one event in the head and one in the tail.
+    cut = max(1, min(cut, len(events) - 1))
+    return find_safe_cut_index(events, cut)
+
+
 async def compact_session(
     ctx: Context,
     session: Session,
     *,
-    target_ratio: float = 0.5,
+    spec: Any | None = None,
+    target_ratio: float | None = None,
     custom_summary: str | None = None,
 ) -> dict[str, Any]:
     """Compacts session history by folding prior events into a summary event.
 
+    When ``spec`` is supplied its token budgets drive the cut (reference
+    compaction-basic behavior). ``target_ratio`` is the legacy event-count
+    heuristic, retained only for direct callers that have not resolved a spec.
     The summary is written as ``compaction/summary``: the retired
     ``session/compaction`` type can no longer be appended.
     """
@@ -167,8 +192,12 @@ async def compact_session(
             "reason": "Session history too short to compact",
         }
 
-    target_cut = max(1, int(len(session.events) * target_ratio))
-    cut_idx = find_safe_cut_index(session.events, target_cut)
+    if spec is not None:
+        cut_idx = _safe_cut_by_tokens(session.events, spec.retain_tokens)
+    else:
+        ratio = 0.5 if target_ratio is None else target_ratio
+        target_cut = max(1, int(len(session.events) * ratio))
+        cut_idx = find_safe_cut_index(session.events, target_cut)
 
     if cut_idx is None or cut_idx <= 0:
         return {
