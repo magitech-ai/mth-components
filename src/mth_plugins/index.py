@@ -12,8 +12,11 @@ from typing import Any, cast
 
 from magitech_harness.components.manifest import ComponentManifest
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_INDEX_PATH = REPO_ROOT / "index.json"
+# Package-relative so it resolves both from the source tree and from a
+# wheel installed in site-packages. Kept as REPO_ROOT for compatibility.
+PACKAGE_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = PACKAGE_ROOT
+DEFAULT_INDEX_PATH = PACKAGE_ROOT / "index.json"
 
 
 @dataclass(frozen=True)
@@ -173,3 +176,33 @@ def find_component(name: str, root: Path | None = None) -> ComponentArtifact | N
         if artifact.name == name:
             return artifact
     return None
+
+
+def discover_installed() -> list[dict[str, Any]]:
+    """Flatten the shipped catalog into records for harness component discovery.
+
+    Each record's ``target`` is the exact module path a user puts in a profile
+    row to mount the component, e.g. ``mth_plugins.tools.fs_search.component:apply``.
+    """
+    result: list[dict[str, Any]] = []
+    for section, entries in load_index().items():
+        for name, info in entries.items():
+            entry = str(info.get("entry_point", ""))
+            file_part, _, attr = entry.partition(":")
+            module = file_part.removesuffix(".py").replace("/", ".")
+            path = str(info.get("path", "")).strip("/").replace("/", ".")
+            target = (
+                f"{__package__}.{path}.{module}:{attr or 'apply'}"
+                if path
+                else f"{__package__}.{module}:{attr or 'apply'}"
+            )
+            result.append(
+                {
+                    "name": name,
+                    "kind": section,
+                    "version": info.get("version", ""),
+                    "description": info.get("description", ""),
+                    "target": target,
+                }
+            )
+    return result
