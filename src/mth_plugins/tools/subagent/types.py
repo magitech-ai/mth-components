@@ -12,6 +12,7 @@ RESEARCH_PRESET_TOOLS: frozenset[str] = frozenset(
         "read_file",
         "list_files",
         "find",
+        "glob",
         "grep",
         "read_url",
         "search_web",

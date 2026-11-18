@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from types import SimpleNamespace
-from typing import Any, ClassVar
+from typing import Any
 
 import pytest
 from anima import Context
@@ -23,14 +22,16 @@ from magitech_harness.session.service import SessionService
 from magitech_harness.session.store import Session
 
 from mth_plugins.guards.compaction.compaction import (
+    _safe_cut_by_tokens,
     compact_session,
     estimate_history_tokens,
     estimate_tokens,
     find_safe_cut_index,
     summarize_events,
 )
-from mth_plugins.guards.compaction.component import apply
+from mth_plugins.guards.compaction.component import _resolve_spec, apply
 from mth_plugins.guards.compaction.component import apply as compaction_apply
+from mth_plugins.guards.compaction.config import CompactSpec
 from mth_plugins.guards.compaction.pruner import PRUNE_MARKER, prune_content
 
 
@@ -625,18 +626,249 @@ async def test_component_registers_pruner_and_prunes_session() -> None:
     compaction_apply(ctx)
     assert "tool-result" in ctx.compaction.list_pruners()
 
-    # Exercise the registered pruner on a minimal session-like object.
-    class _S:
-        events: ClassVar[list[Any]] = [
-            SimpleNamespace(
-                type="tool/result",
-                payload={
-                    "message": {"content": [{"type": "text", "text": "Q" * 9000}]}
-                },
+    # Exercise the registered pruner on a real Session with an oversized
+    # surface tool/result. The fix appends a compaction/prune + replace event
+    # rather than mutating a detached payload copy.
+    session = ctx.sessions.create("pruner-session")
+    ctx.sessions.log_event(session, "turn/start", {"turn": 1})
+    ctx.sessions.log_event(session, "step/start", {"turn": 1, "step": 1})
+    # A non-tool surface node and a small (unprunable) tool result exercise the
+    # pruner's skip branches.
+    ctx.sessions.log_event(
+        session,
+        "user/message",
+        {"content": [{"type": "text", "text": "hi"}], "source": {"kind": "user"}},
+        surface_op="append",
+    )
+    ctx.sessions.log_event(
+        session,
+        "tool/result",
+        {
+            "turn": 1,
+            "step": 1,
+            "message": create_tool_result_message(
+                call_id="small",
+                content=[{"type": "text", "text": "tiny"}],
             ),
-            SimpleNamespace(type="user/message", payload={}),
-        ]
-
+        },
+        surface_op="append",
+    )
+    ctx.sessions.log_event(
+        session,
+        "tool/result",
+        {
+            "turn": 1,
+            "step": 1,
+            "message": create_tool_result_message(
+                call_id="c1",
+                content=[{"type": "text", "text": "Q" * 9000}],
+            ),
+        },
+        surface_op="append",
+    )
     pruner = ctx.compaction._pruners["tool-result"]
-    out = pruner(_S())
+    out = pruner(session)
     assert out["pruned"] is True and out["count"] == 1
+    assert any(e.type == EventType.COMPACTION_PRUNE for e in session.events)
+    replacements = [
+        e
+        for e in session.events
+        if e.type == EventType.TOOL_RESULT
+        and isinstance(e.surface_op, dict)
+        and e.surface_op.get("op") == "replace"
+    ]
+    assert len(replacements) == 1
+    assert replacements[0].source_event_seqs is not None
+    assert "[... tool result middle pruned ...]" in json.dumps(
+        replacements[0].payload.get("message", {})
+    )
+
+
+@pytest.mark.asyncio
+async def test_compact_session_with_token_spec() -> None:
+    """A CompactSpec drives the cut by token budget, not event count."""
+    ctx = Context()
+    ctx.use(SessionProjectionRegistry)
+    ctx.use(SessionService)
+    await ctx.flush()
+    session = ctx.sessions.create("budget-compact")
+    for text in ("First question", "First answer", "Second question", "Second answer"):
+        if "question" in text:
+            _append_user(ctx, session, text)
+        else:
+            _append_assistant(ctx, session, text)
+
+    spec = CompactSpec(threshold_tokens=100, retain_tokens=5)
+    res = await compact_session(ctx, session, spec=spec)
+    assert res["compacted"] is True
+    assert "summary" in res
+    assert any(e.type == EventType.COMPACTION_SUMMARY for e in session.events)
+    checkpoint = session.events[-1]
+    assert checkpoint.type == EventType.USER_MESSAGE
+    assert isinstance(checkpoint.surface_op, dict)
+    assert checkpoint.surface_op.get("op") == "replace"
+
+
+@pytest.mark.asyncio
+async def test_resolve_spec_paths() -> None:
+    """_resolve_spec handles durable context, header, adapter, and fallback paths."""
+
+    class FakeCtx:
+        def __init__(self, llm=None):
+            self._llm = llm
+
+        def has(self, name):
+            return name == "llm" and self._llm is not None
+
+        @property
+        def llm(self):
+            return self._llm
+
+    class FakeSession:
+        def __init__(self, rc=None, rh=None):
+            self._rc = rc
+            self._rh = rh
+
+        def request_context(self):
+            return self._rc
+
+        def request_header(self):
+            return self._rh
+
+    # Durable context supplies the window; header supplies reserved tokens.
+    spec = await _resolve_spec(
+        FakeCtx(),
+        FakeSession(
+            rc={"provider": "p", "model": "m", "contextWindow": 200000},
+            rh={"config": {"maxTokens": 2000}},
+        ),
+        {},
+    )
+    assert spec is not None
+    # message_budget=198000, pressure=132464, threshold=min(160000,132464)=132464
+    # retain=floor(198000*0.16)=31680
+    assert spec.threshold_tokens == 132464
+    assert spec.retain_tokens == 31680
+
+    # Adapter-owned context + defaultMaxTokens is used when no header reserved.
+    class FakeLlm:
+        async def resolve_model_info(self, provider, model):
+            return {
+                "context": {"contextWindow": 200000},
+                "defaultMaxTokens": 2000,
+            }
+
+    spec = await _resolve_spec(
+        FakeCtx(FakeLlm()),
+        FakeSession(rc={"provider": "p", "model": "m"}),
+        {},
+    )
+    assert spec is not None and spec.threshold_tokens == 132464
+
+    # Adapter raising falls through to the configured/fallback window.
+    class FailingLlm:
+        async def resolve_model_info(self, provider, model):
+            raise RuntimeError("no adapter")
+
+    spec = await _resolve_spec(
+        FakeCtx(FailingLlm()),
+        FakeSession(rc={"provider": "p", "model": "m"}),
+        {},
+    )
+    assert spec is not None
+
+    # Non-positive context window returns None (fallback disabled by config).
+    spec = await _resolve_spec(FakeCtx(), FakeSession(), {"context_window": 0})
+    assert spec is None
+
+    # Durable context without contextWindow uses the fallback constant.
+    spec = await _resolve_spec(
+        FakeCtx(), FakeSession(rc={"provider": "p", "model": "m"}), {}
+    )
+    assert spec is not None
+
+
+def test_safe_cut_by_tokens_empty() -> None:
+    assert _safe_cut_by_tokens([], 10) is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_spec_reserved_and_error_fallbacks() -> None:
+    """Remaining _resolve_spec branches: pre-set window, non-dict header, spec error."""
+
+    class FakeCtx:
+        def has(self, name):
+            return False
+
+    class FakeSession:
+        def __init__(self, rc, rh):
+            self._rc, self._rh = rc, rh
+
+        def request_context(self):
+            return self._rc
+
+        def request_header(self):
+            return self._rh
+
+    # Configured window skips durable lookup; non-dict header skips reserved.
+    spec = await _resolve_spec(
+        FakeCtx(),
+        FakeSession(rc={"provider": "p", "model": "m"}, rh="not-a-dict"),
+        {"context_window": 200000},
+    )
+    assert spec is not None
+
+    # A tiny window whose pressure budget is invalid makes resolve_compact_spec raise.
+    spec = await _resolve_spec(
+        FakeCtx(), FakeSession(rc=None, rh=None), {"context_window": 100}
+    )
+    assert spec is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_spec_header_config_shapes() -> None:
+    """Cover non-dict header config and adapter default branch decisions."""
+
+    class FakeCtx:
+        def has(self, name):
+            return False
+
+    class FakeSession:
+        def request_context(self):
+            return {"provider": "p", "model": "m"}
+
+        def request_header(self):
+            return {"config": "not-a-dict"}
+
+    spec = await _resolve_spec(FakeCtx(), FakeSession(), {"context_window": 200000})
+    assert spec is not None
+
+
+@pytest.mark.asyncio
+async def test_resolve_spec_reserved_from_header_skips_adapter_default() -> None:
+    """When the header reserves tokens, the adapter defaultMaxTokens is not used."""
+
+    class FakeCtx:
+        def has(self, name):
+            return name == "llm"
+
+        @property
+        def llm(self):
+            class L:
+                async def resolve_model_info(self, provider, model):
+                    return {"context": {}, "defaultMaxTokens": 9999}
+
+            return L()
+
+    class FakeSession:
+        def request_context(self):
+            return {"provider": "p", "model": "m"}
+
+        def request_header(self):
+            return {"config": {"maxTokens": 2000}}
+
+    spec = await _resolve_spec(FakeCtx(), FakeSession(), {"context_window": 200000})
+    assert spec is not None
+    # reserved=2000 from header (adapter's 9999 is ignored because reserved != 0);
+    # pressure = (200000-2000) - 65536 = 132464
+    assert spec.threshold_tokens == 132464
