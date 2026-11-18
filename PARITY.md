@@ -1,12 +1,19 @@
-# Baseline pins (0.2.0, Phase 0b, 2026-11-11)
+# Parity
 
-- Version: `0.2.0` (first minor bump after 0.1.0; the Phase 0a re-sync ships here).
-- Anima (verified in Phase 0a, 2026-11-10):
-  - Base ref: `ab83c6cae1cde2f496a3dc4059cec20eafda22ae` (PR #12 merge)
-  - Reflect-fix commit: `d3d13eaaf925daf535f0a31721700d93f3c5d609`
-  - Pinned dependency: `anima>=0.1,<0.2` in `pyproject.toml`
-    (declared as a direct dependency in Phase 0a; it was previously
-    imported in ~30 files but only arrived transitively)
-- Verified suites against this ref (Python 3.12, sibling-layout clones):
-  anima 538 passed (100% coverage), magitech-harness 118/118 (100%),
-  mth-plugins 260/260 (100%).
+The authoritative 1.0 parity map lives in the harness repo:
+[`magitech-harness/PARITY.md`](../magitech-harness/PARITY.md). It is the Phase 8
+re-audit deliverable that proves acceptance criterion 1 (every in-scope item
+DONE or PARTIAL-with-accepted-gap, nothing MISSING in-scope).
+
+mth-plugins-specific pins at the 1.0 gate:
+
+- Version `0.2.0`, audited at the C6-fix merge on `main`.
+- Suite: 402 tests, 100% statement + branch coverage; CI green on all 6 legs.
+- Tier 1 tools/providers (ratified §8) are all present; the C6 fix added the
+  last missing one (`fs-search-tool`, registering `glob` and `grep`).
+- Four kept inventions (Pollinations, truncation-guard, workspace-trust-gate,
+  git-shadow checkpoint) are labelled magitech-only extensions, not parity.
+- Accepted gaps (finding #13: Windows ACL, fs `sandbox_policy` enforcement,
+  sandbox escalation) are recorded in the authoritative map.
+- The reference is frozen at `fcc0ad46…` (0.2.2-rc.1) for the 1.0 audit; rc.3
+  drift is in the post-1.0 appendix of the authoritative map.
