@@ -50,7 +50,7 @@ async def _resolve_spec(
         if isinstance(header_config, dict):
             reserved = int(header_config.get("maxTokens", 0) or 0)
 
-    # Adapter-owned capacity is the reference's source of truth.
+    # Adapter-owned capacity is the authoritative source.
     if ctx.has("llm") and provider and model:
         try:
             info = await ctx.llm.resolve_model_info(provider, model)

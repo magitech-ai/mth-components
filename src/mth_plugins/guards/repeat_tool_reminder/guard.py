@@ -5,7 +5,7 @@ configured threshold is reached, delivers an advisory reminder through the
 post-execute decision's ``additionalContexts``. The reminder is advisory only
 — it never blocks or delays a call.
 
-Reference: ``packages/guard/repeat_tool_reminder`` in the parity monorepo.
+Detects consecutive identical tool calls and delivers advisory reminders.
 """
 
 from __future__ import annotations

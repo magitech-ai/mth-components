@@ -3,7 +3,7 @@
 Ports packages/compaction/compaction-tool-result-pruner: collapse the middle
 of an oversized tool result into a fixed marker, keeping head + tail code
 points. Non-text blocks are preserved; text is measured in Unicode code
-points, matching the reference's Array.from() semantics.
+points, measured in Unicode code points.
 """
 
 from __future__ import annotations
