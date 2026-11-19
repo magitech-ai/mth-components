@@ -60,9 +60,14 @@ def test_infinite_loop_times_out_and_reports_failure() -> None:
 def test_executor_exception_fails_closed() -> None:
     """An unexpected read exception is reported, never as success."""
     executor = CodeActExecutor(MagicMock())
+
+    def _raise(coro, timeout):
+        coro.close()  # the mocked wait_for never awaits it
+        raise RuntimeError("boom")
+
     with patch(
         "mth_plugins.tools.codeact.codeact.asyncio.wait_for",
-        side_effect=RuntimeError("boom"),
+        side_effect=_raise,
     ):
         result = asyncio.run(executor.execute("x = 1"))
     assert "Execution Error" in result
@@ -80,7 +85,7 @@ def test_no_result_returns_error_string() -> None:
         patch.object(executor, "_start_proc"),
         patch(
             "mth_plugins.tools.codeact.codeact.asyncio.wait_for",
-            new=lambda coro, timeout: _no_result(),
+            new=lambda coro, timeout: (coro.close(), _no_result())[1],
         ),
     ):
         executor._proc = MagicMock()
