@@ -37,6 +37,9 @@ anima = { path = "../anima", editable = true }
 magitech-harness = { path = "../magitech-harness", editable = true }
 
 [tool.pytest.ini_options]
+# Fail on unexpected warnings (e.g. unawaited coroutines); known test-hygiene
+# ResourceWarnings (unclosed sockets/files/fixtures) are tracked separately.
+filterwarnings = ["error", "ignore::ResourceWarning"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
