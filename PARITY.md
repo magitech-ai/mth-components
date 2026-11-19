@@ -7,7 +7,7 @@ DONE or PARTIAL-with-accepted-gap, nothing MISSING in-scope).
 
 mth-plugins-specific pins at the 1.0 gate:
 
-- Version `0.2.0`, audited at the C6-fix merge on `main`.
+- Version `0.3.0`, audited at the C6-fix merge on `main`.
 - Suite: 402 tests, 100% statement + branch coverage; CI green on all 6 legs.
 - Tier 1 tools/providers (ratified §8) are all present; the C6 fix added the
   last missing one (`fs-search-tool`, registering `glob` and `grep`).
