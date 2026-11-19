@@ -24,7 +24,7 @@ def apply(ctx: Context, config: dict[str, Any] | None = None, **kwargs: Any) -> 
     """Mounts read_file tool onto ctx.tools.
 
     Reads ``default_limit``/``max_limit`` from component config (defaults 2000),
-    enforcing a per-call line cap matching the reference fs/tool-fs read tool.
+    enforcing a per-call line cap on file reads.
     Also registers ``tool:read`` system prompt guidance.
     """
     cfg = {**(config or {}), **kwargs}

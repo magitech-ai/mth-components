@@ -3,7 +3,7 @@
 Python adaptation: the reference drives ripgrep via subprocess; this port uses
 ``pathlib`` so the wheel stays self-contained and cross-platform. Behavior
 (path-pattern discovery, hidden/ignored files included, modification-time
-order, cap with full-result spill note) matches the reference's observable
+order, and cap with full-result spill note match the documented observable
 contract. Paths are confined to the workspace root.
 """
 

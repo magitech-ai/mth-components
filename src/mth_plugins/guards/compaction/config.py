@@ -1,4 +1,4 @@
-"""Compaction-basic budget resolution (Python port of the reference config formulas).
+"""Token-budget resolution for compaction (threshold and retain ratios).
 
 Token budgets replace the old event-count heuristic. The numbers match the
 reference compaction-basic defaults: threshold ratio 0.8, retain ratio 0.16,

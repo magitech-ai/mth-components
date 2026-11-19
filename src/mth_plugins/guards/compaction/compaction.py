@@ -154,7 +154,7 @@ def _safe_cut_by_tokens(events: list[SessionEvent], retain_tokens: int) -> int |
 
     Walks surface-bearing events from the end accumulating token estimates,
     then hands the index to the pairing-safe boundary selector. This mirrors
-    the reference's ``selectCompactableRange`` retention tail.
+    the token-budget retention tail.
     """
     if not events or retain_tokens <= 0:
         return None

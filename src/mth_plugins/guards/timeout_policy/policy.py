@@ -8,7 +8,7 @@ cancellation settles, the result is replaced with a structured
 The deadline is cooperative only — it cannot hard-stop a tool that ignores
 cancellation.
 
-Reference: ``packages/guard/timeout_policy`` in the parity monorepo.
+Cooperative per-tool deadline enforcement via a scoped signal.
 """
 
 from __future__ import annotations

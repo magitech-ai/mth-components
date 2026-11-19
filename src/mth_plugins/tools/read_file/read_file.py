@@ -43,7 +43,7 @@ async def handle_read_file(  # noqa: PLR0912
     """Reads a file with optional 1-indexed line offset and limit pagination.
 
     When no ``limit`` is supplied, ``default_limit`` applies; a ``limit`` above
-    ``max_limit`` fails loud, matching the reference fs/tool-fs read tool caps.
+    ``max_limit`` fails loud, enforcing the per-call read cap.
     """
     path_str = args.get("path")
     if not path_str:

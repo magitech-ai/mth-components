@@ -1,7 +1,7 @@
 """Workspace-rooted path confinement for filesystem tools.
 
 Collapses ``..`` and resolves symlinks before checking containment, matching
-the reference's realpath-based workspace boundary. An escape raises
+a canonicalized workspace boundary. An escape raises
 :class:`PathEscapeError` with a clear message; callers surface it as an error.
 """
 
