@@ -1,7 +1,7 @@
 {
   "name": "approval-guard",
   "version": "0.1.0",
-  "description": "Layered fail-closed approval policy guardrail and authorization broker for Magitech Harness",
+  "description": "Layered fail-closed approval policy guardrail and authorization broker for Magitech Harness NON-CANONICAL variant: the default bundle mounts the native magitech_harness.approval.guard; this opt-in component is a layered policy engine.",
   "entry_point": "component.py:apply",
   "types": [
     "Guard"

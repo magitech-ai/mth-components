@@ -1,7 +1,7 @@
 {
   "name": "repeat-tool-reminder",
   "version": "0.1.0",
-  "description": "Advisory loop-hygiene guard that nudges the model out of identical tool-call loops (tools/post-execute waterfall) for Magitech Harness",
+  "description": "Advisory loop-hygiene guard that nudges the model out of identical tool-call loops (tools/post-execute waterfall) for Magitech Harness NON-CANONICAL variant: the default bundle mounts the native magitech_harness.tools.repeat_guard; this opt-in component uses per-signature chains.",
   "entry_point": "component.py:apply",
   "types": [
     "Guard"
