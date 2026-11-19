@@ -96,7 +96,7 @@
   "guards": {
     "approval-guard": {
       "version": "0.1.0",
-      "description": "Layered fail-closed approval policy guardrail and authorization broker for Magitech Harness",
+      "description": "Layered fail-closed approval policy guardrail and authorization broker for Magitech Harness NON-CANONICAL variant: the default bundle mounts the native magitech_harness.approval.guard; this opt-in component is a layered policy engine.",
       "path": "guards/approval",
       "entry_point": "component.py:apply",
       "types": [
@@ -116,7 +116,7 @@
     },
     "repeat-tool-reminder": {
       "version": "0.1.0",
-      "description": "Advisory loop-hygiene guard that nudges the model out of identical tool-call loops (tools/post-execute waterfall) for Magitech Harness",
+      "description": "Advisory loop-hygiene guard that nudges the model out of identical tool-call loops (tools/post-execute waterfall) for Magitech Harness NON-CANONICAL variant: the default bundle mounts the native magitech_harness.tools.repeat_guard; this opt-in component uses per-signature chains.",
       "path": "guards/repeat_tool_reminder",
       "entry_point": "component.py:apply",
       "types": [
@@ -126,7 +126,7 @@
     },
     "timeout-policy": {
       "version": "0.1.0",
-      "description": "Cooperative time limit for cancellation-aware tool calls (tools/execute waterfall) for Magitech Harness",
+      "description": "Cooperative time limit for cancellation-aware tool calls (tools/execute waterfall) for Magitech Harness NON-CANONICAL variant: the default bundle mounts the native magitech_harness.tools.timeout_guard; this opt-in component uses a {name, code, reason} error shape.",
       "path": "guards/timeout_policy",
       "entry_point": "component.py:apply",
       "types": [

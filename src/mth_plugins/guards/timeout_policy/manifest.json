@@ -1,7 +1,7 @@
 {
   "name": "timeout-policy",
   "version": "0.1.0",
-  "description": "Cooperative time limit for cancellation-aware tool calls (tools/execute waterfall) for Magitech Harness",
+  "description": "Cooperative time limit for cancellation-aware tool calls (tools/execute waterfall) for Magitech Harness NON-CANONICAL variant: the default bundle mounts the native magitech_harness.tools.timeout_guard; this opt-in component uses a {name, code, reason} error shape.",
   "entry_point": "component.py:apply",
   "types": [
     "Guard"
