@@ -187,13 +187,65 @@
       ],
       "enabled": true
     },
-    "skills-bridge": {
-      "version": "0.1.0",
-      "description": "Progressive Agent Skills discovery and execution bridge for Magitech Harness",
-      "path": "bridges/skills",
+    "skills-registry": {
+      "version": "0.2.0",
+      "description": "Agent Skills provider registry for Magitech Harness",
+      "path": "bridges/skills_registry",
       "entry_point": "component.py:apply",
       "types": [
         "Bridge"
+      ],
+      "enabled": true
+    },
+    "skills-filesystem": {
+      "version": "0.2.0",
+      "description": "Agent Skills filesystem provider for Magitech Harness",
+      "path": "bridges/skills_filesystem",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Bridge"
+      ],
+      "enabled": true
+    },
+    "skills-loader": {
+      "version": "0.2.0",
+      "description": "Agent Skills session catalog and loader tool for Magitech Harness",
+      "path": "bridges/skills_loader",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Bridge",
+        "Tool"
+      ],
+      "enabled": true
+    },
+    "okf-registry": {
+      "version": "0.1.0",
+      "description": "OKF knowledge bundle provider registry for Magitech Harness",
+      "path": "bridges/okf_registry",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Bridge"
+      ],
+      "enabled": true
+    },
+    "okf-filesystem": {
+      "version": "0.1.0",
+      "description": "OKF knowledge bundle filesystem provider for Magitech Harness",
+      "path": "bridges/okf_filesystem",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Bridge"
+      ],
+      "enabled": true
+    },
+    "okf-loader": {
+      "version": "0.1.0",
+      "description": "OKF knowledge bundle session catalog and loader tool for Magitech Harness",
+      "path": "bridges/okf_loader",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Bridge",
+        "Tool"
       ],
       "enabled": true
     },

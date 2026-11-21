@@ -1,0 +1,10 @@
+{
+  "name": "skills-filesystem",
+  "version": "0.2.0",
+  "description": "Agent Skills filesystem provider for Magitech Harness",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Bridge"
+  ],
+  "enabled": true
+}

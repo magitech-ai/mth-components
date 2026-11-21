@@ -1,0 +1,11 @@
+{
+  "name": "skills-loader",
+  "version": "0.2.0",
+  "description": "Agent Skills session catalog and loader tool for Magitech Harness",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Bridge",
+    "Tool"
+  ],
+  "enabled": true
+}

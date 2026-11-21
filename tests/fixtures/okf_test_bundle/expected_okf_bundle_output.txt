@@ -1,0 +1,14 @@
+<okf_bundle_content name="okf_test_bundle">
+---
+okf_version: "0.3"
+title: OKF Test Bundle — Coding Standards
+description: Test bundle derived from OKF v0.3 SPEC.md template examples. Used for golden-fixture validation of okf_bundle loader tool.
+license: CC-BY-4.0
+---
+
+# OKF Test Bundle — Coding Standards
+
+* [Policies](policies/index.md) - Test policy concepts derived from OKF v0.3 SPEC.md templates.
+* [References](references/index.md) - Reference concepts derived from OKF v0.3 SPEC.md templates.
+</okf_bundle_content>
+<resource_base>{RESOURCE_BASE}</resource_base>
