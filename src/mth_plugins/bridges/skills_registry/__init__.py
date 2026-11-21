@@ -1,0 +1,1 @@
+"""Skills provider registry bridge."""

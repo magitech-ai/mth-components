@@ -1,0 +1,11 @@
+{
+  "name": "okf-registry",
+  "version": "0.1.0",
+  "description": "OKF knowledge bundle provider registry for Magitech Harness",
+  "entry_point": "component.py:apply",
+  "path": "bridges/okf_registry",
+  "types": [
+    "Bridge"
+  ],
+  "enabled": true
+}

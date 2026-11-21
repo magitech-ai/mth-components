@@ -1,0 +1,10 @@
+{
+  "name": "skills-registry",
+  "version": "0.2.0",
+  "description": "Agent Skills provider registry for Magitech Harness",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Bridge"
+  ],
+  "enabled": true
+}

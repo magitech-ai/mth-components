@@ -1,0 +1,12 @@
+{
+  "name": "okf-loader",
+  "version": "0.1.0",
+  "description": "OKF knowledge bundle session catalog and loader tool for Magitech Harness",
+  "entry_point": "component.py:apply",
+  "path": "bridges/okf_loader",
+  "types": [
+    "Bridge",
+    "Tool"
+  ],
+  "enabled": true
+}

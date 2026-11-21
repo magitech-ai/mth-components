@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -84,8 +85,13 @@ def _bundle_child_factory(
         if turns is not None:
             turns.append(turn)
 
+        # Unique per child context: both invokes share subsessions_dir, so a
+        # fixed id lets the second invoke load the first one's persisted
+        # session and shift first_seq — a Windows-only persistence-timing race.
+        default_session_id = f"mock-child-{uuid.uuid4().hex[:8]}"
+
         async def _fake_create(options: Any) -> Any:
-            session_id = str(options.get("sessionId", "mock-child"))
+            session_id = str(options.get("sessionId", default_session_id))
             session = ctx.sessions.get(session_id)
             if session is None:
                 # The driver prepares a fresh session after the pre-created
