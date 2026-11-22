@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from anima import Context
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.tools.subagent.manager import SubagentManager
@@ -65,7 +65,7 @@ def apply(ctx: Context) -> SubagentManager:
             }
 
         tools_svc.register(
-            Tool(
+            define_tool(
                 name="invoke_subagent",
                 description="Spawn and coordinate one or more delegated subagents.",
                 parameters={
@@ -102,12 +102,12 @@ def apply(ctx: Context) -> SubagentManager:
                         "description": "Whether to wait synchronously for turn.",
                     },
                 },
-                handler=_handle_invoke,
+                execute=_handle_invoke,
             )
         )
 
         tools_svc.register(
-            Tool(
+            define_tool(
                 name="send_message",
                 description="Send follow-up conversational instruction to subagent.",
                 parameters={
@@ -122,12 +122,12 @@ def apply(ctx: Context) -> SubagentManager:
                         "required": True,
                     },
                 },
-                handler=_handle_message,
+                execute=_handle_message,
             )
         )
 
         tools_svc.register(
-            Tool(
+            define_tool(
                 name="manage_subagents",
                 description="Inspect or terminate active subagents.",
                 parameters={
@@ -143,7 +143,7 @@ def apply(ctx: Context) -> SubagentManager:
                         "description": "Target subagent identifiers for kill action.",
                     },
                 },
-                handler=_handle_manage,
+                execute=_handle_manage,
             )
         )
 

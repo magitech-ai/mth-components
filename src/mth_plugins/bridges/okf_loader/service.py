@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from anima import Context, Disposer, Service
-from magitech_harness.tools.definition import define_tool
+from magitech_harness.tools.schema import define_tool
 
 
 def _escape_xml(text: str) -> str:

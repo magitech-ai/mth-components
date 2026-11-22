@@ -17,7 +17,7 @@ from magitech_harness.agent.cancellation import AbortSignal
 from magitech_harness.llm.service import LLMService, MockLLMProvider
 from magitech_harness.session.events import EventType
 from magitech_harness.session.service import SessionService
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.tools.subagent.manager import SubagentManager
@@ -124,13 +124,19 @@ def parent_ctx(tmp_path: Path) -> Context:
     SessionService(ctx, {"base_storage_dir": tmp_path / "sessions"})
     tools = ToolService(ctx)
     tools.register(
-        Tool(name="read_file", description="", parameters={}, handler=AsyncMock())
+        define_tool(
+            name="read_file", description="", parameters={}, execute=AsyncMock()
+        )
     )
     tools.register(
-        Tool(name="write_file", description="", parameters={}, handler=AsyncMock())
+        define_tool(
+            name="write_file", description="", parameters={}, execute=AsyncMock()
+        )
     )
     tools.register(
-        Tool(name="invoke_subagent", description="", parameters={}, handler=AsyncMock())
+        define_tool(
+            name="invoke_subagent", description="", parameters={}, execute=AsyncMock()
+        )
     )
     llm = LLMService(ctx)
     llm.default_model = "test-model"

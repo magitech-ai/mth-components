@@ -2,6 +2,7 @@
 
 import mth_plugins.guards.approval as approval_pkg
 import mth_plugins.guards.compaction as compaction_pkg
+import mth_plugins.guards.redaction as redaction_pkg
 import mth_plugins.guards.truncation as truncation_pkg
 
 
@@ -16,6 +17,10 @@ def test_package_exports() -> None:
     assert hasattr(truncation_pkg, "truncate_tail")
     assert hasattr(truncation_pkg, "format_size")
     assert hasattr(truncation_pkg, "TruncationResult")
+
+    assert hasattr(redaction_pkg, "apply")
+    assert hasattr(redaction_pkg, "redact")
+    assert hasattr(redaction_pkg, "secret_values")
 
     assert hasattr(compaction_pkg, "apply")
     assert hasattr(compaction_pkg, "compact_session")

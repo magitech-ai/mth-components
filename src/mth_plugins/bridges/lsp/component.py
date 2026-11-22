@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from anima import Context
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolCallData
 
 from mth_plugins.bridges.lsp.service import LspService
@@ -93,7 +93,7 @@ def apply(
             return await service.get_references(p, line, char)
 
         tools_svc.register(
-            Tool(
+            define_tool(
                 name="lsp_definition",
                 description="Find symbol definition location using LSP.",
                 parameters={
@@ -113,12 +113,12 @@ def apply(
                         "required": True,
                     },
                 },
-                handler=_lsp_definition,
+                execute=_lsp_definition,
             )
         )
 
         tools_svc.register(
-            Tool(
+            define_tool(
                 name="lsp_references",
                 description="Find all references to symbol at location via LSP.",
                 parameters={
@@ -138,7 +138,7 @@ def apply(
                         "required": True,
                     },
                 },
-                handler=_lsp_references,
+                execute=_lsp_references,
             )
         )
 

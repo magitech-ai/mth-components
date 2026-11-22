@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from anima import Context
-from magitech_harness.tools.definition import define_tool
+from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.tools.read_file.read_file import (
     DEFAULT_LIMIT,

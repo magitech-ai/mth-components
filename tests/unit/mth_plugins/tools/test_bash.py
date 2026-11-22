@@ -183,9 +183,9 @@ async def test_bash_component_integration() -> None:
     assert ctx.tools.get("bash") is not None
     tool = ctx.tools.get("bash")
     assert tool is not None
-    assert tool.name == "bash"
+    assert tool["name"] == "bash"
 
-    res = await tool.execute({"command": "echo registered bash tool"})
+    res = await tool["execute"]({"command": "echo registered bash tool"})
     assert res == "registered bash tool"
 
 

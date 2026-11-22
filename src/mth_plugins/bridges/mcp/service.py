@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from anima import Context, Disposer, Service
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.bridges.mcp.client import McpClient
 from mth_plugins.bridges.mcp.transport import SseTransport, StdioTransport
@@ -85,7 +85,12 @@ class McpBridgeService(Service):
                 continue
             namespaced_name = f"mcp_{server_name}_{orig_name}"
             desc = t.get("description", f"MCP tool from {server_name}")
-            params = t.get("inputSchema", {"type": "object", "properties": {}})
+            input_schema = t.get("inputSchema") or {"type": "object", "properties": {}}
+            required = set(input_schema.get("required") or ())
+            params: dict[str, Any] = {
+                key: ({**spec, "required": True} if key in required else spec)
+                for key, spec in (input_schema.get("properties") or {}).items()
+            }
 
             def _make_handler(c: McpClient, t_name: str) -> Callable[..., Any]:
                 async def _handler(args: dict[str, Any]) -> str:
@@ -93,11 +98,11 @@ class McpBridgeService(Service):
 
                 return _handler
 
-            tool = Tool(
+            tool = define_tool(
                 name=namespaced_name,
                 description=desc,
                 parameters=params,
-                handler=_make_handler(client, orig_name),
+                execute=_make_handler(client, orig_name),
             )
             disposer = self.ctx.tools.register(tool)
             self.registered_disposers.append(disposer)

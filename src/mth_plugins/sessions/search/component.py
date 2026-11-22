@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from anima import Context
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.sessions.search.service import SessionSearchService
@@ -36,7 +36,7 @@ def apply(
             }
 
         tools_svc.register(
-            Tool(
+            define_tool(
                 name="session_search",
                 description=(
                     "Search historical conversations, messages, "
@@ -53,7 +53,7 @@ def apply(
                         "description": "Maximum number of results to return.",
                     },
                 },
-                handler=_handle_search,
+                execute=_handle_search,
             )
         )
 

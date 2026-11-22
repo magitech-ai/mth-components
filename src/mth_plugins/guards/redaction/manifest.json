@@ -1,0 +1,10 @@
+{
+  "name": "redaction-guard",
+  "version": "0.1.0",
+  "description": "Redact known secret values from tool output (tools/post-execute waterfall)",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Guard"
+  ],
+  "enabled": true
+}

@@ -45,7 +45,7 @@ async def test_subagent_component_apply_and_tools(ctx: Context) -> None:
         summary="Invoked ok",
     )
     with patch.object(manager, "invoke", AsyncMock(return_value=[mock_rec])):
-        res_inv = await tools_svc.get("invoke_subagent").execute(
+        res_inv = await tools_svc.get("invoke_subagent")["execute"](
             {
                 "role": "tester",
                 "prompt": "run tests",
@@ -59,7 +59,7 @@ async def test_subagent_component_apply_and_tools(ctx: Context) -> None:
 
     # 2. send_message tool call
     with patch.object(manager, "send_message", AsyncMock(return_value=mock_rec)):
-        res_msg = await tools_svc.get("send_message").execute(
+        res_msg = await tools_svc.get("send_message")["execute"](
             {"subagent_id": "sub-abc", "message": "status update"}
         )
         assert res_msg["success"] is True
@@ -67,7 +67,9 @@ async def test_subagent_component_apply_and_tools(ctx: Context) -> None:
 
     # 3. manage_subagents tool call
     with patch.object(manager, "manage", AsyncMock(return_value=[mock_rec])):
-        res_manage = await tools_svc.get("manage_subagents").execute({"action": "list"})
+        res_manage = await tools_svc.get("manage_subagents")["execute"](
+            {"action": "list"}
+        )
         assert res_manage["success"] is True
         assert res_manage["action"] == "list"
         assert len(res_manage["subagents"]) == 1

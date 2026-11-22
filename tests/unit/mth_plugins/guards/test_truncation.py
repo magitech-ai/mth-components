@@ -8,7 +8,7 @@ import pytest
 from anima import Context
 from magitech_harness.session.events import ToolCallData
 from magitech_harness.system_prompt.service import SystemPromptService
-from magitech_harness.tools.definition import define_tool
+from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.guards.truncation.component import apply

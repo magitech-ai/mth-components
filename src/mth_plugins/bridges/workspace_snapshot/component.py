@@ -8,7 +8,7 @@ from typing import Any
 
 from anima import Context
 from anima.events import EventMode
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.bridges.workspace_snapshot.service import SnapshotService
@@ -60,7 +60,7 @@ def apply(
             }
 
         tools_svc.register(
-            Tool(
+            define_tool(
                 name="snapshot_diff",
                 description="Show unified diff between snapshot and current workspace.",
                 parameters={
@@ -73,12 +73,12 @@ def apply(
                         "description": "Optional workspace root path override.",
                     },
                 },
-                handler=_handle_diff,
+                execute=_handle_diff,
             )
         )
 
         tools_svc.register(
-            Tool(
+            define_tool(
                 name="snapshot_restore",
                 description="Restore workspace files to a specific snapshot state.",
                 parameters={
@@ -92,7 +92,7 @@ def apply(
                         "description": "Optional workspace root path override.",
                     },
                 },
-                handler=_handle_restore,
+                execute=_handle_restore,
             )
         )
 

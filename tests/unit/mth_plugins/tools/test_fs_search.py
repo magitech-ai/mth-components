@@ -87,7 +87,7 @@ async def test_fs_search_component_registers_both_tools(tmp_path: Path) -> None:
     ctx.use(SystemPromptService)
     await ctx.flush()
     fs_search_apply(ctx, config={"workspace_root": str(tmp_path)})
-    names = {tool["function"]["name"] for tool in ctx.tools.get_schemas()}
+    names = {tool["name"] for tool in ctx.tools.schemas()}
     assert "glob" in names
     assert "grep" in names
     (tmp_path / "x.py").write_text("needle here\n", encoding="utf-8")
