@@ -1,0 +1,10 @@
+{
+  "name": "web-search-tool",
+  "version": "0.1.0",
+  "description": "Keyless web search via SearXNG or DuckDuckGo",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Tool"
+  ],
+  "enabled": true
+}

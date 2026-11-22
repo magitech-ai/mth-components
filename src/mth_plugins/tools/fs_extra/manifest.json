@@ -1,0 +1,10 @@
+{
+  "name": "fs-extra-tools",
+  "version": "0.1.0",
+  "description": "delete_file and list_directory tools with workspace confinement",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Tool"
+  ],
+  "enabled": true
+}

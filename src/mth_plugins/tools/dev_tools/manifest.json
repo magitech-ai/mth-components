@@ -1,0 +1,10 @@
+{
+  "name": "dev-tools",
+  "version": "0.1.0",
+  "description": "reload_module and add_repo developer workflow tools",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Tool"
+  ],
+  "enabled": true
+}

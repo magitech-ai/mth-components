@@ -91,6 +91,56 @@
         "Tool"
       ],
       "enabled": true
+    },
+    "fs-extra-tools": {
+      "version": "0.1.0",
+      "description": "delete_file and list_directory tools with workspace confinement",
+      "path": "tools/fs_extra",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Tool"
+      ],
+      "enabled": true
+    },
+    "code-analysis-tools": {
+      "version": "0.1.0",
+      "description": "code_metrics, find_duplicates and generate_docs tools",
+      "path": "tools/code_analysis",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Tool"
+      ],
+      "enabled": true
+    },
+    "web-search-tool": {
+      "version": "0.1.0",
+      "description": "Keyless web search via SearXNG or DuckDuckGo",
+      "path": "tools/web_search",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Tool"
+      ],
+      "enabled": true
+    },
+    "verify-repo-tool": {
+      "version": "0.1.0",
+      "description": "Run a repository's declared verification checks",
+      "path": "tools/verify_repo",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Tool"
+      ],
+      "enabled": true
+    },
+    "dev-tools": {
+      "version": "0.1.0",
+      "description": "reload_module and add_repo developer workflow tools",
+      "path": "tools/dev_tools",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Tool"
+      ],
+      "enabled": true
     }
   },
   "guards": {
