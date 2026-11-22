@@ -181,6 +181,21 @@ async def test_sse_transport_owns_client_and_stream_error() -> None:
         mock_inner_client.aclose.assert_awaited_once()
 
 
+async def test_stdio_transport_close_waits_for_stdin() -> None:
+    transport = StdioTransport("echo")
+    mock_proc = AsyncMock()
+    mock_proc.stdin = MagicMock()
+    mock_proc.stdin.is_closing.return_value = False
+    mock_proc.stdin.wait_closed = AsyncMock()
+    mock_proc.returncode = 0
+    transport.process = mock_proc
+
+    await transport.close()
+
+    mock_proc.stdin.close.assert_called_once()
+    mock_proc.stdin.wait_closed.assert_awaited_once()
+
+
 async def test_stdio_transport_close_edges() -> None:
     # 1. Close when process is None
     transport1 = StdioTransport("echo")
