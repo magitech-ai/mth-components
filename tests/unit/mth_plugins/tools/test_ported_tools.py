@@ -199,7 +199,11 @@ def test_repo_map_parsing_and_resolution() -> None:
     assert parse_repo_map("# no header") == []
 
 
-def test_find_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_find_home(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
     fake = tmp_path / "agents-home"
     (fake / "skills").mkdir(parents=True)
     (fake / "AGENTS.md").write_text("x")
@@ -207,6 +211,12 @@ def test_find_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("AGENTS_HOME_PATH", str(fake))
     assert find_home() == fake
     monkeypatch.delenv("AGENTS_HOME_PATH")
+
+    # The fallback walks cwd and its parents, so run it from an unrelated empty
+    # directory. tmp_path itself holds the fake home above and cannot be used.
+    empty = tmp_path_factory.mktemp("no-home")
+    monkeypatch.chdir(empty)
+    monkeypatch.setenv("HOME", str(empty))
     assert find_home(str(tmp_path / "nope")) is None
 
 
@@ -434,7 +444,12 @@ def test_code_analysis_remaining_branches(tmp_path: Path) -> None:
     assert "No duplicate" in handle_find_duplicates({"path": str(tmp_path)})
 
 
-def test_dev_tools_remaining_branches(tmp_path: Path) -> None:
+def test_dev_tools_remaining_branches(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        "mth_plugins.tools.dev_tools.handlers.find_home", lambda *a: None
+    )
     assert "no agents-home" in handle_add_repo({"ref": "r"})
     target = tmp_path / "m.py"
     target.write_text("Z=1\n")
