@@ -1,4 +1,4 @@
-"""Tests for the tools ported from home-swe-home into mth-plugins."""
+"""Tests for the shared filesystem, analysis, search and developer tools."""
 
 from __future__ import annotations
 

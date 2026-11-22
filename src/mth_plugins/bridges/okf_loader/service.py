@@ -11,6 +11,8 @@ from typing import Any
 from anima import Context, Disposer, Service
 from magitech_harness.tools.schema import define_tool
 
+from mth_plugins.bridges.okf_loader.trust import summarize_bundle
+
 
 def _escape_xml(text: str) -> str:
     """XML-escape text for safe inclusion in catalog."""
@@ -68,8 +70,10 @@ class OKFSessionCatalogService(Service):
             "The following OKF knowledge bundles contain structured domain "
             "knowledge. When a task matches a bundle's description, use the "
             "okf_bundle({name}) tool to load the bundle's index.md before "
-            "proceeding. When a concept references relative paths, resolve them "
-            "against the bundle root (the directory containing index.md)."
+            "proceeding. After loading a bundle, apply the trust/freshness rules "
+            "from the okf-consume skill before answering. When a concept "
+            "references relative paths, resolve them against the bundle root "
+            "(the directory containing index.md)."
         )
 
         catalog_block = (
@@ -117,12 +121,14 @@ class OKFSessionCatalogService(Service):
                 return f"Error: Failed to read OKF bundle '{name}': {exc}"
 
             resource_base = str(bundle.path.resolve())
+            trust_summary = summarize_bundle(bundle.path)
 
             return (
                 f'<okf_bundle_content name="{_escape_xml(name)}">\n'
                 f"{content}\n"
                 f"</okf_bundle_content>\n"
-                f"<resource_base>{_escape_xml(resource_base)}</resource_base>"
+                f"<resource_base>{_escape_xml(resource_base)}</resource_base>\n"
+                f"{trust_summary}"
             )
 
         okf_bundle_tool = define_tool(
