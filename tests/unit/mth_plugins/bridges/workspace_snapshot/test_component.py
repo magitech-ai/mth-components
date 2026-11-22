@@ -47,7 +47,7 @@ async def test_snapshot_component_waterfall_and_tools(tmp_path: Path) -> None:
     diff_tool = tools.get("snapshot_diff")
     assert diff_tool is not None
     with patch.object(service, "diff", AsyncMock(return_value="diff output")):
-        res_diff = await diff_tool.execute(
+        res_diff = await diff_tool["execute"](
             {"target_snapshot": "t1", "workspace": str(tmp_path / "custom_ws")}
         )
         assert res_diff["success"] is True
@@ -57,7 +57,7 @@ async def test_snapshot_component_waterfall_and_tools(tmp_path: Path) -> None:
     restore_tool = tools.get("snapshot_restore")
     assert restore_tool is not None
     with patch.object(service, "restore", AsyncMock(return_value=True)):
-        res_restore = await restore_tool.execute(
+        res_restore = await restore_tool["execute"](
             {"snapshot_id": "t1", "workspace": str(tmp_path / "custom_ws")}
         )
         assert res_restore["success"] is True

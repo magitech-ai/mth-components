@@ -15,7 +15,7 @@ import pytest
 from anima import Context
 from magitech_harness import check_bundle_entries, create_harness
 from magitech_harness.llm.service import MockLlmAdapter, MockLLMProvider
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.tools.subagent.manager import SubagentManager
 from mth_plugins.tools.subagent.types import SubagentSpec, SubagentState
@@ -31,13 +31,19 @@ async def test_subagent_turn_on_bundle_child_persists(tmp_path: Path) -> None:
     parent_ctx.llm.register_provider("mock", mock_provider)
     parent_ctx.llm.set_active_provider("mock")
     parent_ctx.tools.register(
-        Tool(name="read_file", description="", parameters={}, handler=AsyncMock())
+        define_tool(
+            name="read_file", description="", parameters={}, execute=AsyncMock()
+        )
     )
     parent_ctx.tools.register(
-        Tool(name="write_file", description="", parameters={}, handler=AsyncMock())
+        define_tool(
+            name="write_file", description="", parameters={}, execute=AsyncMock()
+        )
     )
     parent_ctx.tools.register(
-        Tool(name="invoke_subagent", description="", parameters={}, handler=AsyncMock())
+        define_tool(
+            name="invoke_subagent", description="", parameters={}, execute=AsyncMock()
+        )
     )
 
     manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})

@@ -46,7 +46,7 @@ async def test_session_search_component_and_tool(tmp_path: Path) -> None:
     ctx.emit("turn/finish", SimpleNamespace(storage_path=None), "turn-2")
 
     # Execute session_search tool
-    res = await tool.execute({"query": "nginx reverse proxy", "limit": 5})
+    res = await tool["execute"]({"query": "nginx reverse proxy", "limit": 5})
     assert res["success"] is True
     assert res["count"] == 1
     assert res["matches"][0]["conversation_id"] == "chat"

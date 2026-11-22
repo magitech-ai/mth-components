@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from anima import Context
-from magitech_harness.tools.definition import define_tool
+from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.tools.fs_search.glob import DEFAULT_MAX_RESULTS, handle_glob
 from mth_plugins.tools.fs_search.grep import (

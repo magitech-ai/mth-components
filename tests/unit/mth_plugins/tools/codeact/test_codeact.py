@@ -4,7 +4,7 @@ from typing import Any, ClassVar
 
 import pytest
 from anima import Context
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.tools.codeact.codeact import CodeActExecutor
@@ -95,11 +95,11 @@ async def test_codeact_tool_dispatching(ctx: Context) -> None:
         return f"Content of {args.get('path')}"
 
     tools_svc.register(
-        Tool(
+        define_tool(
             name="read_file",
             description="Read file",
             parameters={"path": {"type": "string"}},
-            handler=mock_read,
+            execute=mock_read,
         )
     )
 
@@ -123,11 +123,11 @@ async def test_codeact_tool_dispatch_errors(ctx: Context) -> None:
         raise RuntimeError("disk failure")
 
     tools_svc.register(
-        Tool(
+        define_tool(
             name="broken",
             description="Broken tool",
             parameters={},
-            handler=failing_tool,
+            execute=failing_tool,
         )
     )
 
@@ -189,11 +189,11 @@ async def test_codeact_tool_fallback_signature_and_content_error(ctx: Context) -
         return args["a"] + args["b"]
 
     tools_svc.register(
-        Tool(
+        define_tool(
             name="sum_numbers",
             description="Sum tool",
             parameters={"a": {"type": "integer"}, "b": {"type": "integer"}},
-            handler=sum_tool,
+            execute=sum_tool,
         )
     )
 
@@ -214,11 +214,11 @@ async def test_codeact_tool_fallback_signature_and_content_error(ctx: Context) -
         return CustomErrResult()
 
     tools_svc.register(
-        Tool(
+        define_tool(
             name="err_inner",
             description="Err tool",
             parameters={},
-            handler=err_tool,
+            execute=err_tool,
         )
     )
 
@@ -239,7 +239,11 @@ def test_codeact_registry_fallback_variations() -> None:
     # 1. tools service without _registry but with list_all
     class MockToolsWithListAll:
         def list_all(self) -> list[Any]:
-            return [Tool(name="t1", description="", parameters={})]
+            return [
+                define_tool(
+                    name="t1", description="", parameters={}, execute=lambda _a: None
+                )
+            ]
 
     ctx1 = Context()
     ctx1.tools = MockToolsWithListAll()

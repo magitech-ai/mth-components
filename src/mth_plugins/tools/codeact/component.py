@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from anima import Context
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.tools.codeact.codeact import CodeActExecutor
 
@@ -20,7 +20,7 @@ def apply(ctx: Context, **kwargs: Any) -> CodeActExecutor:
             return "Error: 'code' argument is required."
         return await executor.execute(code)
 
-    tool = Tool(
+    tool = define_tool(
         name="execute_python",
         description=(
             "Execute Python code in a safe CodeAct environment with persistent "
@@ -33,7 +33,7 @@ def apply(ctx: Context, **kwargs: Any) -> CodeActExecutor:
                 "required": True,
             }
         },
-        handler=_handle_execute_python,
+        execute=_handle_execute_python,
     )
 
     tools_svc = getattr(ctx, "tools", None)

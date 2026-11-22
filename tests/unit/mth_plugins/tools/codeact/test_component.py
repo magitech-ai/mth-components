@@ -17,7 +17,7 @@ async def test_component_apply_and_execute() -> None:
 
     tool = tools.get("execute_python")
     assert tool is not None
-    assert "code" in tool.parameters
+    assert "code" in tool["parameters"]["properties"]
 
     call = ToolCallData(
         call_id="c_python",

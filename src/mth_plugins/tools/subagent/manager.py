@@ -186,7 +186,8 @@ class SubagentManager(Service):
         effective: list[str] = []
         parent_tools = getattr(self.ctx, "tools", None)
         if parent_tools is not None:
-            for name, tool in parent_tools.tools.items():
+            for tool in parent_tools.definitions():
+                name = tool["name"]
                 if name in SUBAGENT_TRIAD_TOOLS:
                     continue
                 if allowed is None or name in allowed:

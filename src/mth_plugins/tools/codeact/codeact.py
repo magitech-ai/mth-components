@@ -53,11 +53,13 @@ class CodeActExecutor:
             names = set(registry.keys())
         elif hasattr(tools_svc, "definitions"):
             names = {d["name"] for d in tools_svc.definitions()}
-            legacy = getattr(tools_svc, "_legacy_tools", {})
-            names.update(legacy.keys())
         else:
             all_tools = getattr(tools_svc, "list_all", None)
-            names = {t.name for t in all_tools()} if callable(all_tools) else set()
+            names = (
+                {(t["name"] if isinstance(t, dict) else t.name) for t in all_tools()}
+                if callable(all_tools)
+                else set()
+            )
         names.discard("execute_python")
         return names
 
@@ -72,7 +74,9 @@ class CodeActExecutor:
 
         merged_kwargs = dict(kwargs)
         if args:  # pragma: no cover
-            param_names = list(getattr(tool, "parameters", {}).keys())
+            parameters = tool.get("parameters", {}) if isinstance(tool, dict) else {}
+            properties = parameters.get("properties") or parameters or {}
+            param_names = list(properties.keys())
             for i, arg in enumerate(args):
                 if i < len(param_names):
                     merged_kwargs[param_names[i]] = arg
@@ -192,9 +196,15 @@ class CodeActExecutor:
                                 else None
                             )
                             if tool is not None:  # pragma: no cover
-                                param_names = list(
-                                    getattr(tool, "parameters", {}).keys()
+                                parameters = (
+                                    tool.get("parameters", {})
+                                    if isinstance(tool, dict)
+                                    else {}
                                 )
+                                properties = (
+                                    parameters.get("properties") or parameters or {}
+                                )
+                                param_names = list(properties.keys())
                                 for i, arg in enumerate(args):
                                     if i < len(param_names):
                                         merged_kwargs[param_names[i]] = arg

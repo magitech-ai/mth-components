@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from anima import Context
 from magitech_harness.approval.service import ApprovalRequest, ApprovalService
-from magitech_harness.tools.definition import Tool
+from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolCallData, ToolResultData, ToolService
 
 from mth_plugins.guards.approval.component import apply
@@ -28,11 +28,11 @@ async def test_component_apply_and_waterfalls(tmp_path: Path) -> None:
         return f"Wrote {args.get('path')}"
 
     tools.register(
-        Tool(
+        define_tool(
             name="write_file",
             description="Write tool",
             parameters={"path": {"type": "string"}},
-            handler=sample_exec,
+            execute=sample_exec,
         )
     )
 
