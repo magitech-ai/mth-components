@@ -16,13 +16,17 @@ _Avoid_: Spec, descriptor, config
 
 **Catalog**:
 The centralized index (`index.json`) mapping component names to their manifest locations and metadata.
-_Avoid_: Registry, marketplace database, store
+_Avoid_: Registry, marketplace database, store, session catalog
 
 ### Capability Seams
 
 **Provider**:
-A component that implements the `LLMProvider` protocol to interface with external model APIs for text generation and streaming.
-_Avoid_: Adapter, model backend, driver
+A component that supplies a capability to a consumer through a registered seam: a model provider (`LLMProvider`) for completions, or a bundle provider for discoverable content.
+_Avoid_: Adapter, backend, driver
+
+**Bundle Provider**:
+A provider that supplies discoverable bundles (Agent Skills or OKF knowledge bundles) to a session catalog, as distinct from a model provider.
+_Avoid_: Model provider, content source
 
 **Tool**:
 A callable capability exposed to language models with JSON schema definitions and typed execution handlers.
@@ -47,6 +51,24 @@ _Avoid_: Component requirement, package import
 **CodeAct**:
 Direct execution of model-synthesized Python snippets with AST write-protection for registered tools, auto-`await` dispatching, and persistent session locals.
 _Avoid_: Python tool, eval script, REPL runner
+
+### Progressive Discovery & Knowledge
+
+**Skill**:
+A portable package of instructions and supporting files that is discovered progressively and activated on demand.
+_Avoid_: Slash command, prompt snippet
+
+**Knowledge Bundle**:
+A directory of Markdown documents with YAML frontmatter that can be catalogued and loaded into a session.
+_Avoid_: Knowledge base, doc set
+
+**OKF Bundle**:
+A knowledge bundle conforming to the Open Knowledge Format, carrying provenance, trust, lifecycle and attestation metadata.
+_Avoid_: OKF repository, knowledge graph
+
+**Session Catalog**:
+A session-scoped, name-and-description-only view of discovered bundles or skills used to decide what to load.
+_Avoid_: Marketplace catalog, full-text index
 
 ### Security & Human-in-the-Loop
 

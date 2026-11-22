@@ -17,3 +17,20 @@ mth-plugins-specific pins at the 1.0 gate:
   sandbox escalation) are recorded in the authoritative map.
 - The reference is frozen at `fcc0ad46…` (0.2.2-rc.1) for the 1.0 audit; rc.3
   drift is in the post-1.0 appendix of the authoritative map.
+
+## Since the 1.0 gate
+
+The numbers above are a frozen audit record and are deliberately not rewritten.
+Current `main` adds components that are **outside** the 1.0 parity scope:
+
+- **Agent Skills consumption** — `skills-registry`, `skills-filesystem`,
+  `skills-loader` (progressive skill discovery and activation).
+- **OKF knowledge bundles** — `okf-registry`, `okf-filesystem`, `okf-loader`
+  (session catalog, model-driven bundle loading, trust summary and handoff).
+- **Ported harness tools** — `fs-extra-tools`, `code-analysis-tools`,
+  `web-search-tool`, `verify-repo-tool`, `dev-tools`.
+- **Redaction guard** — `redaction-guard`.
+
+Current local verification on this branch: **501 tests**, 100% statement and
+branch coverage, full shared gate green. The package version remains `0.3.0`; a
+release bump and the matching cross-repo pin update are a separate follow-up.
