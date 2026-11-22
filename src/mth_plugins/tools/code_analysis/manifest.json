@@ -1,0 +1,10 @@
+{
+  "name": "code-analysis-tools",
+  "version": "0.1.0",
+  "description": "code_metrics, find_duplicates and generate_docs tools",
+  "entry_point": "component.py:apply",
+  "types": [
+    "Tool"
+  ],
+  "enabled": true
+}
