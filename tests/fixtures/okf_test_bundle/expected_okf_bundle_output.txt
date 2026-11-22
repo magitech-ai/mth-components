@@ -12,3 +12,9 @@ license: CC-BY-4.0
 * [References](references/index.md) - Reference concepts derived from OKF v0.3 SPEC.md templates.
 </okf_bundle_content>
 <resource_base>{RESOURCE_BASE}</resource_base>
+<trust_summary count="2">
+concept | type | status | trust | stale
+--- | --- | --- | --- | ---
+cross-platform-path-assertions | Policy | stable | unverified | no
+okf-spec-md | Reference | stable | unverified | no
+</trust_summary>

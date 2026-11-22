@@ -67,7 +67,8 @@ async def test_okf_loader_registers_and_loads_bundle(tmp_path: Path) -> None:
 
     # Verify output structure
     assert result.content.startswith('<okf_bundle_content name="okf_test_bundle">\n')
-    assert result.content.endswith("</resource_base>")
+    assert "<resource_base>" in result.content
+    assert '<trust_summary count="2">' in result.content
     # Match the platform's own path rendering (Windows uses backslashes).
     assert str(bundle_path.resolve()) in result.content
 
