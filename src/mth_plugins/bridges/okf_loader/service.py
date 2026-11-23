@@ -13,6 +13,7 @@ from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.bridges.okf_loader.trust import (
     collect_concepts,
+    load_concept_bodies,
     render_concept_map,
     summarize_bundle,
 )
@@ -83,7 +84,9 @@ class OKFSessionCatalogService(Service):
             "knowledge. When a task matches a bundle's description, use the "
             "okf_bundle({name}) tool to load the bundle's index.md before "
             "proceeding. After loading a bundle, apply the trust/freshness rules "
-            "from the okf-consume skill before answering. When a concept "
+            "from the okf-consume skill before answering. Use "
+            "okf_bundle_concepts({name, ids}) to load the bodies of selected "
+            "concepts from the concept map in one call. When a concept "
             "references relative paths, resolve them against the bundle root "
             "(the directory containing index.md)."
         )
@@ -161,6 +164,54 @@ class OKFSessionCatalogService(Service):
             execute=_handle_okf_bundle,
         )
         self._tool_disposers.append(self.ctx.tools.register(okf_bundle_tool))
+
+        async def _handle_okf_bundle_concepts(args: dict[str, Any]) -> str:
+            name = str(args.get("name", "")).strip()
+            if not name:
+                return "Error: okf_bundle_concepts requires a non-empty 'name'."
+            ids = args.get("ids")
+            if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
+                return "Error: okf_bundle_concepts requires an 'ids' list of strings."
+            bundle = self.ctx.okf_registry.get_bundle(name)
+            if bundle is None:
+                available = [b.name for b in self.ctx.okf_registry.list_bundles()]
+                return (
+                    f"Error: OKF bundle '{name}' not found. "
+                    f"Available bundles: {available}"
+                )
+            rendered, omitted = load_concept_bodies(bundle.path, ids)
+            notice = f"\nomitted: {', '.join(omitted)}" if omitted else ""
+            return (
+                f'<okf_concept_bodies bundle="{_escape_xml(name)}">\n'
+                f"{rendered}\n"
+                f"</okf_concept_bodies>{notice}"
+            )
+
+        self._tool_disposers.append(
+            self.ctx.tools.register(
+                define_tool(
+                    name="okf_bundle_concepts",
+                    description=(
+                        "Load the bodies of selected OKF concepts by ID in one call. "
+                        "Use the IDs from okf_bundle's concept_map. Capped at 8 "
+                        "concepts and 32 KB; omitted IDs are reported."
+                    ),
+                    parameters={
+                        "name": {
+                            "type": "string",
+                            "description": "The OKF bundle name.",
+                            "required": True,
+                        },
+                        "ids": {
+                            "type": "array",
+                            "description": "Concept IDs to load.",
+                            "required": True,
+                        },
+                    },
+                    execute=_handle_okf_bundle_concepts,
+                )
+            )
+        )
 
     def _cleanup(self) -> None:
         if self._prompt_disposer is not None:
