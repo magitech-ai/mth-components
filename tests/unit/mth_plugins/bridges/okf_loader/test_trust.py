@@ -6,8 +6,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from mth_plugins.bridges.okf_loader.trust import (
+    MAX_SUMMARY_CONCEPTS,
+    ConceptMeta,
     is_stale,
     parse_frontmatter,
+    render_concept_map,
     summarize_bundle,
     trust_tier,
 )
@@ -106,3 +109,71 @@ def test_summarize_bundle_unreadable_file(tmp_path: Path, monkeypatch) -> None:
     summary = summarize_bundle(tmp_path)
     assert 'count="1"' in summary
     assert "good | Policy | stable | unverified | no" in summary
+
+
+def test_render_concept_map_rows_and_cap() -> None:
+    concepts = [
+        ConceptMeta(
+            path="policies/rule.md",
+            concept="rule",
+            title="Rule | one",
+            description="A short description",
+            type="Policy",
+            status="stable",
+            trust="human-reviewed",
+            stale=False,
+        ),
+        ConceptMeta(
+            path="decisions/d-001.md",
+            concept="d-001",
+            title="First decision",
+            description="Another description",
+            type="Decision",
+            status="stable",
+            trust="unverified",
+            stale=True,
+        ),
+    ]
+    rendered = render_concept_map(concepts)
+    assert '<concept_map count="2">' in rendered
+    assert "path | id | title | description | type | status | trust | stale" in rendered
+    assert (
+        "policies/rule.md | rule | Rule \\| one | A short description "
+        "| Policy | stable | human-reviewed | no" in rendered
+    )
+    assert (
+        "decisions/d-001.md | d-001 | First decision | Another description "
+        "| Decision | stable | unverified | yes" in rendered
+    )
+    assert "</concept_map>" in rendered
+
+
+def test_render_concept_map_empty_and_caps() -> None:
+    assert 'count="0"' in render_concept_map([])
+    long = ConceptMeta(
+        path="p.md",
+        concept="p",
+        title="T",
+        description="x" * 300,
+        type="Policy",
+        status="stable",
+        trust="unverified",
+        stale=False,
+    )
+    assert "..." in render_concept_map([long])
+    many = [
+        ConceptMeta(
+            path=f"c{i}.md",
+            concept=f"c{i}",
+            title="T",
+            description="d",
+            type="Policy",
+            status="stable",
+            trust="unverified",
+            stale=False,
+        )
+        for i in range(MAX_SUMMARY_CONCEPTS + 2)
+    ]
+    rendered = render_concept_map(many)
+    assert f'count="{MAX_SUMMARY_CONCEPTS + 2}"' in rendered
+    assert "... and 2 more concepts" in rendered

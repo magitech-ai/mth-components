@@ -11,7 +11,11 @@ from typing import Any
 from anima import Context, Disposer, Service
 from magitech_harness.tools.schema import define_tool
 
-from mth_plugins.bridges.okf_loader.trust import summarize_bundle
+from mth_plugins.bridges.okf_loader.trust import (
+    collect_concepts,
+    render_concept_map,
+    summarize_bundle,
+)
 
 
 def _escape_xml(text: str) -> str:
@@ -122,12 +126,14 @@ class OKFSessionCatalogService(Service):
 
             resource_base = str(bundle.path.resolve())
             trust_summary = summarize_bundle(bundle.path)
+            concept_map = render_concept_map(collect_concepts(bundle.path))
 
             return (
                 f'<okf_bundle_content name="{_escape_xml(name)}">\n'
                 f"{content}\n"
                 f"</okf_bundle_content>\n"
                 f"<resource_base>{_escape_xml(resource_base)}</resource_base>\n"
+                f"{concept_map}\n"
                 f"{trust_summary}"
             )
 
