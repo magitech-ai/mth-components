@@ -66,3 +66,15 @@ def test_cleanup() -> None:
     assert len(registry.bundles) == 1
     registry._cleanup()
     assert len(registry.bundles) == 0
+
+
+def test_registry_emits_bundles_changed_on_register() -> None:
+    ctx = Context()
+    registry = _registry(ctx)
+    seen: list[int] = []
+    ctx.on("okf/bundles-changed", lambda *_a, **_k: seen.append(1))
+    registry.register_bundle(_bundle("a"))
+    assert len(seen) == 1
+    # A rejected registration must not emit.
+    registry.register_bundle(_bundle("a", rank=9))
+    assert len(seen) == 1

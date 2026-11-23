@@ -41,6 +41,11 @@ class OKFSessionCatalogService(Service):
         self._prompt_disposer: Disposer | None = None
         self._tool_disposers: list[Disposer] = []
         self.ctx.effect(self._cleanup)
+        self.ctx.on("okf/bundles-changed", self._on_bundles_changed)
+
+    def _on_bundles_changed(self, *_args: Any, **_kwargs: Any) -> None:
+        """Refresh the injected catalog when the registry changes."""
+        self._inject_catalog()
 
     def _build_catalog_xml(self) -> str:
         """Build Tier 1 catalog XML from registered bundles.
@@ -67,6 +72,9 @@ class OKFSessionCatalogService(Service):
     def _inject_catalog(self) -> None:
         """Inject catalog as <system-reminder> message via system prompt section."""
         catalog_xml = self._build_catalog_xml()
+        if self._prompt_disposer is not None:
+            self._prompt_disposer()
+            self._prompt_disposer = None
         if not catalog_xml:
             return
 

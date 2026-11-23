@@ -154,7 +154,7 @@ async def test_okf_filesystem_provider_discovery(tmp_path: Path) -> None:
     await ctx.flush()
 
     service = OKFFilesystemProviderService(ctx)
-    discovered = service.discover_bundles(root=FIXTURE.parent)
+    discovered = service.discover_bundles(roots=[(FIXTURE.parent, "project")])
 
     assert "okf_test_bundle" in discovered
 
@@ -262,3 +262,28 @@ async def test_okf_bundle_result_includes_concept_map() -> None:
         in result.content
     )
     assert "references/okf-spec-md.md | okf-spec-md" in result.content
+
+
+async def test_loader_refreshes_catalog_on_registry_change() -> None:
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    ctx.use(apply_native_executor)
+    ctx.use(OKFProviderRegistryService)
+    ctx.use(OKFSessionCatalogService)
+    await ctx.flush()
+    loader = ctx.okf_loader
+    loader.activate()
+    assert "<okf_bundles>" not in await ctx.system_prompt.render()
+
+    ctx.okf_registry.register_bundle(
+        OKFBundleInfo(
+            "later", "Later", "Added after activation", Path("/tmp/later"), "0.3"
+        )
+    )
+    rendered = await ctx.system_prompt.render()
+    assert "<name>later</name>" in rendered
+
+    ctx.okf_registry.bundles.clear()
+    ctx.emit("okf/bundles-changed")
+    assert "<okf_bundles>" not in await ctx.system_prompt.render()
