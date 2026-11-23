@@ -28,8 +28,8 @@ async def apply(
 
     if auto_discover and ctx.has("okf_registry"):
         service: OKFFilesystemProviderService = ctx.okf_filesystem
-        root = Path(knowledge_dir) if knowledge_dir else None
-        service.discover_bundles(root=root)
+        root = Path(knowledge_dir) if knowledge_dir else Path("agents-home/knowledge")
+        service.discover_bundles(roots=[(root, "project")])
 
 
 apply.inject = ["okf_filesystem"]  # type: ignore[attr-defined]

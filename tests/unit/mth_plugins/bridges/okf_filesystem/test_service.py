@@ -54,7 +54,7 @@ async def test_discover_bundles(tmp_path: Path) -> None:
     svc = ctx.okf_filesystem
     _make_bundle(tmp_path, "bundle-b")
     _make_bundle(tmp_path, "bundle-a")
-    discovered = svc.discover_bundles(root=tmp_path)
+    discovered = svc.discover_bundles(roots=[(tmp_path, "project")])
     assert discovered == ["bundle-a", "bundle-b"]
     registry = ctx.okf_registry
     assert registry.get_bundle("bundle-a") is not None
@@ -75,7 +75,7 @@ async def test_discover_skips_non_bundles(tmp_path: Path) -> None:
     d = tmp_path / "noversion"
     d.mkdir()
     (d / "index.md").write_text("---\ntitle: T\n---\n")
-    assert svc.discover_bundles(root=tmp_path) == []
+    assert svc.discover_bundles(roots=[(tmp_path, "project")]) == []
 
 
 async def test_discover_unreadable_index(tmp_path: Path) -> None:
@@ -85,7 +85,7 @@ async def test_discover_unreadable_index(tmp_path: Path) -> None:
     svc = ctx.okf_filesystem
     _make_bundle(tmp_path, "bundle-x")
     with patch.object(Path, "read_text", side_effect=OSError("denied")):
-        assert svc.discover_bundles(root=tmp_path) == []
+        assert svc.discover_bundles(roots=[(tmp_path, "project")]) == []
 
 
 async def test_discover_duplicate_loses_registration(tmp_path: Path) -> None:
@@ -96,9 +96,9 @@ async def test_discover_duplicate_loses_registration(tmp_path: Path) -> None:
     svc = ctx.okf_filesystem
     _make_bundle(tmp_path, "bundle-dup")
     # First discovery registers it.
-    assert svc.discover_bundles(root=tmp_path) == ["bundle-dup"]
+    assert svc.discover_bundles(roots=[(tmp_path, "project")]) == ["bundle-dup"]
     # Second discovery: registry tie => rejected => not in discovered.
-    assert svc.discover_bundles(root=tmp_path) == []
+    assert svc.discover_bundles(roots=[(tmp_path, "project")]) == []
 
 
 async def test_discover_missing_root(tmp_path: Path) -> None:
@@ -106,7 +106,7 @@ async def test_discover_missing_root(tmp_path: Path) -> None:
     _setup(ctx)
     await ctx.flush()
     svc = ctx.okf_filesystem
-    assert svc.discover_bundles(root=tmp_path / "missing") == []
+    assert svc.discover_bundles(roots=[(tmp_path / "missing", "project")]) == []
 
 
 async def test_default_root(tmp_path: Path, monkeypatch) -> None:
@@ -128,3 +128,42 @@ def test_cleanup() -> None:
     svc._discovered = ["x"]
     svc._cleanup()
     assert svc._discovered == []
+
+
+async def test_discover_bundles_with_scope_precedence(tmp_path: Path) -> None:
+    ctx = Context()
+    _setup(ctx)
+    await ctx.flush()
+    svc = ctx.okf_filesystem
+    user = tmp_path / "user"
+    home = tmp_path / "home"
+    _make_bundle(user, "dup")
+    _make_bundle(home, "dup")
+    _make_bundle(home, "home-only")
+    discovered = svc.discover_bundles(roots=[(home, "home"), (user, "user")])
+    assert "dup" in discovered
+    assert "home-only" in discovered
+    # home (rank 1) beats user (rank 2)
+    assert ctx.okf_registry.get_bundle("dup").path.parent == home
+
+
+async def test_discover_bundles_symlink_dedup(tmp_path: Path) -> None:
+    ctx = Context()
+    _setup(ctx)
+    await ctx.flush()
+    svc = ctx.okf_filesystem
+    real = tmp_path / "real"
+    alias = tmp_path / "alias"
+    real.mkdir()
+    alias.mkdir()
+    _make_bundle(real, "s")
+    (alias / "s").symlink_to(real / "s", target_is_directory=True)
+    discovered = svc.discover_bundles(roots=[(real, "home"), (alias, "user")])
+    assert discovered.count("s") == 1
+
+
+async def test_discover_bundles_no_roots(tmp_path: Path) -> None:
+    ctx = Context()
+    _setup(ctx)
+    await ctx.flush()
+    assert ctx.okf_filesystem.discover_bundles(roots=[]) == []

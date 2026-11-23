@@ -44,9 +44,11 @@ class OKFProviderRegistryService(Service):
         if existing is not None:
             if bundle.rank < existing.rank:
                 self.bundles[bundle.name] = bundle
+                self.ctx.emit("okf/bundles-changed")
                 return True
             return False  # Existing wins ties and higher-rank
         self.bundles[bundle.name] = bundle
+        self.ctx.emit("okf/bundles-changed")
         return True
 
     def get_bundle(self, name: str) -> OKFBundleInfo | None:
@@ -57,3 +59,4 @@ class OKFProviderRegistryService(Service):
 
     def _cleanup(self) -> None:
         self.bundles.clear()
+        self.ctx.emit("okf/bundles-changed")
