@@ -6,21 +6,26 @@ import contextlib
 import importlib.util
 import json
 import os
-import re
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from mth_plugins.tools.dev_tools.repo_map import RepoEntry, parse_repo_map, resolve_repo
+
+__all__ = [
+    "RepoEntry",
+    "find_home",
+    "handle_add_repo",
+    "handle_reload_module",
+    "parse_repo_map",
+    "resolve_repo",
+]
 
 # --- module reload with current-turn read tracking -------------------------
 
 _module_stats: dict[str, tuple[float, int]] = {}
 _READABLE_TOOLS = frozenset({"read_file", "write_file"})
 _HOME_NAME = "agents-home"
-_MARKER = "## Other Repos"
-_NAME_RE = re.compile(r"^- \*\*(.+?)\*\*")
-_PATH_RE = re.compile(r"\]\((\.{1,2}/[^)]+)\)|`(\.{1,2}/[^`]+)`")
-_URL_RE = re.compile(r"<(https://github\.com/[^>]+)>")
 
 
 def _normalize(path: str) -> str:
@@ -91,59 +96,6 @@ def handle_reload_module(args: dict[str, Any], run_ctx: Any = None) -> str:
 
 
 # --- mapped repo resolution -------------------------------------------------
-
-
-@dataclass(frozen=True)
-class RepoEntry:
-    name: str
-    path: str
-    clone_url: str = ""
-
-
-def parse_repo_map(text: str) -> list[RepoEntry]:
-    lines = text.splitlines()
-    if _MARKER not in lines:
-        return []
-    groups: list[list[str]] = []
-    for line in lines[lines.index(_MARKER) + 1 :]:
-        if line.startswith("## "):
-            break
-        if _NAME_RE.match(line):
-            groups.append([line])
-        elif groups and line.strip():
-            groups[-1].append(line.strip())
-    entries: list[RepoEntry] = []
-    for group in groups:
-        joined = " ".join(part.strip() for part in group)
-        name = _NAME_RE.match(joined)
-        path = _PATH_RE.search(joined)
-        if name is None or path is None:
-            continue
-        url = _URL_RE.search(joined)
-        entries.append(
-            RepoEntry(
-                name=name.group(1).strip(),
-                path=(path.group(1) or path.group(2)).rstrip("/"),
-                clone_url=url.group(1) if url else "",
-            )
-        )
-    return entries
-
-
-def resolve_repo(entries: list[RepoEntry], ref: str) -> RepoEntry | None:
-    wanted = ref.strip().rstrip("/")
-    for entry in entries:
-        if entry.name.casefold() == wanted.casefold():
-            return entry
-    for entry in entries:
-        if entry.clone_url and entry.clone_url.removesuffix(
-            ".git"
-        ) == wanted.removesuffix(".git"):
-            return entry
-    for entry in entries:
-        if entry.path == wanted:
-            return entry
-    return None
 
 
 def _looks_like_home(path: Path) -> bool:
