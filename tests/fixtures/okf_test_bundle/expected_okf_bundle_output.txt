@@ -12,6 +12,12 @@ license: CC-BY-4.0
 * [References](references/index.md) - Reference concepts derived from OKF v0.3 SPEC.md templates.
 </okf_bundle_content>
 <resource_base>{RESOURCE_BASE}</resource_base>
+<concept_map count="2">
+path | id | title | description | type | status | trust | stale
+--- | --- | --- | --- | --- | --- | --- | ---
+policies/cross-platform-path-assertions.md | cross-platform-path-assertions | Cross-platform path assertions | Never assert on a path as a slash-delimited string; use pathlib-native assertions instead. | Policy | stable | unverified | no
+references/okf-spec-md.md | okf-spec-md | OKF v0.3 SPEC.md | The Open Knowledge Format v0.3 specification primary document. | Reference | stable | unverified | no
+</concept_map>
 <trust_summary count="2">
 concept | type | status | trust | stale
 --- | --- | --- | --- | ---

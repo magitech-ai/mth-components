@@ -228,3 +228,37 @@ async def test_okf_loader_tool_edge_cases(tmp_path: Path) -> None:
     loader._cleanup()
     assert loader._prompt_disposer is None
     assert loader._tool_disposers == []
+
+
+async def test_okf_bundle_result_includes_concept_map() -> None:
+    """The loader result carries a routing map for every concept."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    ctx.use(OKFProviderRegistryService)
+    await ctx.flush()
+    registry = ctx.okf_registry
+    registry.register_bundle(
+        OKFBundleInfo(
+            name="okf_test_bundle",
+            title="Fixture",
+            description="Fixture",
+            path=FIXTURE,
+            okf_version="0.3",
+        )
+    )
+    ctx.use(OKFSessionCatalogService)
+    await ctx.flush()
+    ctx.okf_loader.activate()
+
+    result = await ctx.tools.execute(
+        ToolCallData(
+            call_id="map", name="okf_bundle", arguments={"name": "okf_test_bundle"}
+        )
+    )
+    assert '<concept_map count="2">' in result.content
+    assert (
+        "policies/cross-platform-path-assertions.md | cross-platform-path-assertions"
+        in result.content
+    )
+    assert "references/okf-spec-md.md | okf-spec-md" in result.content
