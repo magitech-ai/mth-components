@@ -287,3 +287,52 @@ async def test_loader_refreshes_catalog_on_registry_change() -> None:
     ctx.okf_registry.bundles.clear()
     ctx.emit("okf/bundles-changed")
     assert "<okf_bundles>" not in await ctx.system_prompt.render()
+
+
+async def test_okf_bundle_concepts_tool_returns_bodies() -> None:
+    """The batch tool loads selected concept bodies in one call."""
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    ctx.use(apply_native_executor)
+    ctx.use(OKFProviderRegistryService)
+    await ctx.flush()
+    ctx.okf_registry.register_bundle(
+        OKFBundleInfo("fixture", "Fixture", "d", FIXTURE, "0.3")
+    )
+    ctx.use(OKFSessionCatalogService)
+    await ctx.flush()
+    ctx.okf_loader.activate()
+
+    result = await ctx.tools.execute(
+        ToolCallData(
+            call_id="bodies",
+            name="okf_bundle_concepts",
+            arguments={"name": "fixture", "ids": ["okf-spec-md", "missing"]},
+        )
+    )
+    assert not result.is_error
+    assert '<okf_concept id="okf-spec-md"' in result.content
+    assert "Open Knowledge Format v0.3 specification" in result.content
+    assert "omitted: missing" in result.content
+
+
+async def test_okf_bundle_concepts_error_paths() -> None:
+    ctx = Context()
+    ctx.use(SystemPromptService)
+    ctx.use(ToolService)
+    ctx.use(apply_native_executor)
+    ctx.use(OKFProviderRegistryService)
+    ctx.use(OKFSessionCatalogService)
+    await ctx.flush()
+    ctx.okf_loader.activate()
+
+    for args, expected in (
+        ({"name": "", "ids": ["a"]}, "non-empty 'name'"),
+        ({"name": "x", "ids": [123]}, "'ids' list"),
+        ({"name": "missing", "ids": ["a"]}, "not found"),
+    ):
+        result = await ctx.tools.execute(
+            ToolCallData(call_id="err", name="okf_bundle_concepts", arguments=args)
+        )
+        assert expected in result.content

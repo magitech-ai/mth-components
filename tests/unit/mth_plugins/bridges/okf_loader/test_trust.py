@@ -8,7 +8,9 @@ from pathlib import Path
 from mth_plugins.bridges.okf_loader.trust import (
     MAX_SUMMARY_CONCEPTS,
     ConceptMeta,
+    collect_concepts,
     is_stale,
+    load_concept_bodies,
     parse_frontmatter,
     render_concept_map,
     summarize_bundle,
@@ -177,3 +179,80 @@ def test_render_concept_map_empty_and_caps() -> None:
     rendered = render_concept_map(many)
     assert f'count="{MAX_SUMMARY_CONCEPTS + 2}"' in rendered
     assert "... and 2 more concepts" in rendered
+
+
+def test_load_concept_bodies_selection_caps_and_notices(tmp_path: Path) -> None:
+    root = tmp_path / "bundle"
+    (root / "policies").mkdir(parents=True)
+    (root / "policies" / "a.md").write_text(
+        "---\ntype: Policy\ntitle: A\n---\nBody A", encoding="utf-8"
+    )
+    (root / "policies" / "b.md").write_text(
+        "---\ntype: Policy\ntitle: B\n---\nBody B", encoding="utf-8"
+    )
+    rendered, omitted = load_concept_bodies(root, ["a", "missing"])
+    assert '<okf_concept id="a"' in rendered
+    assert "Body A" in rendered
+    assert "---" not in rendered.split("<okf_concept")[1].split(">")[1][:40]
+    assert omitted == ["missing"]
+    assert '<okf_concept id="b"' not in rendered
+
+    rendered, omitted = load_concept_bodies(root, ["a", "b"], max_concepts=1)
+    assert "Body B" not in rendered
+    assert omitted == ["b"]
+
+    rendered, omitted = load_concept_bodies(root, ["a", "b"], max_bytes=10)
+    assert "Body A" not in rendered
+    assert omitted == ["a", "b"]
+
+
+def test_load_concept_bodies_unreadable(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "bundle"
+    (root / "policies").mkdir(parents=True)
+    (root / "policies" / "a.md").write_text(
+        "---\ntype: Policy\ntitle: A\n---\nBody", encoding="utf-8"
+    )
+    original = Path.read_text
+
+    def flaky(self: Path, *args: object, **kwargs: object) -> str:
+        if self.name == "a.md" and "Body" in original(self, *args, **kwargs):
+            raise OSError("denied")
+        return original(self, *args, **kwargs)  # type: ignore[return-value]
+
+    monkeypatch.setattr(Path, "read_text", flaky)
+    # collect_concepts skips the unreadable file entirely -> unknown ID.
+    rendered, omitted = load_concept_bodies(root, ["a"])
+    assert rendered == ""
+    assert omitted == ["a"]
+
+
+def test_collect_concepts_skips_path_outside_bundle(tmp_path: Path) -> None:
+    root = tmp_path / "bundle"
+    root.mkdir()
+    outside = tmp_path / "outside.md"
+    outside.write_text("---\ntype: Policy\ntitle: Outside\n---\n", encoding="utf-8")
+    (root / "escape.md").symlink_to(outside)
+    assert collect_concepts(root) == []
+
+
+def test_load_concept_bodies_read_failure_after_discovery(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root = tmp_path / "bundle"
+    root.mkdir()
+    (root / "a.md").write_text(
+        "---\ntype: Policy\ntitle: A\n---\nBody", encoding="utf-8"
+    )
+    original = Path.read_text
+    calls = [0]
+
+    def flaky(self: Path, *args: object, **kwargs: object) -> str:
+        calls[0] += 1
+        if calls[0] == 2:
+            raise OSError("denied")
+        return original(self, *args, **kwargs)  # type: ignore[return-value]
+
+    monkeypatch.setattr(Path, "read_text", flaky)
+    rendered, omitted = load_concept_bodies(root, ["a"])
+    assert rendered == ""
+    assert omitted == ["a"]

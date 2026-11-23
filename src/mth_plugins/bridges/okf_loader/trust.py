@@ -18,6 +18,8 @@ import yaml  # type: ignore[import-untyped]
 _FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|\Z)", re.DOTALL)
 MAX_SUMMARY_CONCEPTS = 40
 MAX_DESCRIPTION_CHARS = 160
+MAX_BODY_CONCEPTS = 8
+MAX_BODY_BYTES = 32_768
 
 
 @dataclass(frozen=True)
@@ -93,10 +95,13 @@ def is_stale(frontmatter: dict[str, Any], now: datetime | None = None) -> bool:
 def collect_concepts(bundle_path: Path) -> list[ConceptMeta]:
     """Read frontmatter-only routing data for every concept in a bundle."""
     concepts: list[ConceptMeta] = []
+    root = bundle_path.resolve()
     for path in sorted(bundle_path.rglob("*.md")):
         if path.name in ("index.md", "log.md") or any(
             part.startswith(".") for part in path.relative_to(bundle_path).parts
         ):
+            continue
+        if not path.resolve().is_relative_to(root):
             continue
         try:
             text = path.read_text(encoding="utf-8")
@@ -118,6 +123,54 @@ def collect_concepts(bundle_path: Path) -> list[ConceptMeta]:
             )
         )
     return concepts
+
+
+def load_concept_bodies(
+    bundle_path: Path,
+    ids: list[str],
+    *,
+    max_concepts: int = MAX_BODY_CONCEPTS,
+    max_bytes: int = MAX_BODY_BYTES,
+) -> tuple[str, list[str]]:
+    """Render selected concept bodies with metadata in one bounded block.
+
+    Returns ``(rendered, omitted)``. Omitted IDs include unknown concepts and
+    anything dropped by the concept-count or byte budgets.
+    """
+    known = {concept.concept: concept for concept in collect_concepts(bundle_path)}
+    omitted: list[str] = []
+    selected: list[tuple[ConceptMeta, str]] = []
+    for concept_id in ids:
+        concept = known.get(concept_id)
+        if concept is None:
+            omitted.append(concept_id)
+            continue
+        path = bundle_path / concept.path
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            omitted.append(concept_id)
+            continue
+        body = _FRONTMATTER_RE.sub("", text, count=1).strip()
+        selected.append((concept, body))
+
+    blocks: list[str] = []
+    used = 0
+    for concept, body in selected[:max_concepts]:
+        block = (
+            f'<okf_concept id="{concept.concept}" type="{concept.type}" '
+            f'status="{concept.status}" trust="{concept.trust}" '
+            f'stale="{str(concept.stale).lower()}">\n'
+            f"{body}\n"
+            "</okf_concept>"
+        )
+        if len(block.encode("utf-8")) + used > max_bytes:
+            omitted.append(concept.concept)
+            continue
+        blocks.append(block)
+        used += len(block.encode("utf-8"))
+    omitted.extend(c.concept for c, _b in selected[max_concepts:])
+    return "\n\n".join(blocks), omitted
 
 
 def _cell(value: object) -> str:
