@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from anima import Context, Service
+from animas import Context, Service
 
 from mth_plugins.guards.trust.hasher import compute_directory_tree_hash
 from mth_plugins.guards.trust.store import TrustDecision, TrustStore

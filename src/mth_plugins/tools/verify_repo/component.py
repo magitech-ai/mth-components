@@ -1,10 +1,10 @@
-"""Anima component entry point for repo verification."""
+"""Animas component entry point for repo verification."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.tools.verify_repo.verify import handle_verify_repo

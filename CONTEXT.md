@@ -7,7 +7,7 @@ The official extensible marketplace containing pluggable model providers, domain
 ### Marketplace & Distribution
 
 **Component**:
-A packaged Python module adhering to the manifest specification that mounts capabilities onto an Anima context.
+A packaged Python module adhering to the manifest specification that mounts capabilities onto an Animas context.
 _Avoid_: Extension, addon, module
 
 **Manifest**:
@@ -115,7 +115,7 @@ _Avoid_: Child toolset, delegation api
 ### Interception & Transformations
 
 **Guard**:
-A component that intercepts turns or messages via Anima event waterfalls to enforce boundaries, safety, or token limits.
+A component that intercepts turns or messages via Animas event waterfalls to enforce boundaries, safety, or token limits.
 _Avoid_: Middleware, filter, interceptor
 
 **Compaction Guard**:

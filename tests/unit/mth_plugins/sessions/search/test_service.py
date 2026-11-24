@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from anima import Context
+from animas import Context
 from magitech_harness.session.service import SessionService
 
 from mth_plugins.sessions.search.service import SessionSearchService

@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.lsp.service import LspService
 

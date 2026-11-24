@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.sessions.search.component import apply

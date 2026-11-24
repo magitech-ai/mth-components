@@ -11,7 +11,7 @@ from typing import Any, ClassVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness import create_harness as real_create_harness
 from magitech_harness.agent.cancellation import AbortSignal
 from magitech_harness.llm.service import LLMService, MockLLMProvider

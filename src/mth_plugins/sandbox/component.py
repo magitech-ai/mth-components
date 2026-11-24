@@ -1,10 +1,10 @@
-"""Anima component entry point for sandbox-ladder."""
+"""Animas component entry point for sandbox-ladder."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.sandbox.ladder import PrivilegeLevel, SandboxService
 
@@ -16,7 +16,7 @@ def apply(
     bwrap_path: str | None = None,
     **kwargs: Any,
 ) -> None:
-    """Anima component registering the SandboxService onto the context."""
+    """Animas component registering the SandboxService onto the context."""
     level = PrivilegeLevel(max_level.lower())
     ctx.use(
         SandboxService,

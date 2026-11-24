@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, ClassVar
 
-from anima import Context, Service
+from animas import Context, Service
 
 from mth_plugins.bridges.workspace_snapshot.git import SnapshotEngine
 

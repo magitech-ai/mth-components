@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.shell.service import LocalShellService
 from magitech_harness.system_prompt.service import SystemPromptService
 from magitech_harness.tools.service import ToolService

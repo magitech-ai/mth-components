@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.okf_filesystem.component import apply as okf_fs_apply
 from mth_plugins.bridges.okf_loader.component import apply as okf_loader_apply

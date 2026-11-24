@@ -1,10 +1,10 @@
-"""Anima component entry point for developer workflow tools."""
+"""Animas component entry point for developer workflow tools."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.tools.dev_tools.handlers import handle_add_repo, handle_reload_module

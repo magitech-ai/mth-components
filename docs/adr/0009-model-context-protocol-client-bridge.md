@@ -20,7 +20,7 @@ The Model Context Protocol (MCP) has emerged as an open standard for connecting 
    Map advertised MCP tools dynamically into `magitech_harness.tools.definition.Tool` instances mounted on `ctx.tools`, with namespacing formatted as `mcp_{server_name}_{tool_name}` to eliminate collision risk across multiple upstream servers.
 
 4. **Lifecycle Disposers**:
-   Tie client subprocess lifecycles and tool registrations directly to Anima context disposers (`ctx.effect`), ensuring graceful process termination and clean unregistration on context tear-down.
+   Tie client subprocess lifecycles and tool registrations directly to Animas context disposers (`ctx.effect`), ensuring graceful process termination and clean unregistration on context tear-down.
 
 ## Consequences
 - **Positive**: Seamlessly bridges hundreds of external MCP servers into Magitech agents with zero changes to core harness logic.

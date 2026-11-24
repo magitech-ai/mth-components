@@ -1,12 +1,12 @@
-"""Anima component entry point for context compaction guardrail."""
+"""Animas component entry point for context compaction guardrail."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any, cast
 
-from anima import Context
-from anima.events import EventMode
+from animas import Context
+from animas.events import EventMode
 from magitech_harness.session.events import EventType
 
 from mth_plugins.guards.compaction.compaction import (
@@ -76,7 +76,7 @@ async def _resolve_spec(
 
 
 def apply(ctx: Context, config: dict | None = None, **kwargs: Any) -> None:
-    """Anima component registering compaction guardrail and session/compact handler."""
+    """Animas component registering compaction guardrail and session/compact handler."""
     cfg = {**(config or {}), **kwargs}
     max_tokens: int | None = cfg.get("max_tokens")
     legacy_ratio: float | None = cfg.get("target_ratio")

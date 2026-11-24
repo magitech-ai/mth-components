@@ -12,7 +12,7 @@ from typing import Any, ClassVar
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness import check_bundle_entries, create_harness
 from magitech_harness.llm.service import MockLlmAdapter, MockLLMProvider
 from magitech_harness.tools.schema import define_tool

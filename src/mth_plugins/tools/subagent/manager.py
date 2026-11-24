@@ -11,7 +11,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
-from anima import Context, Service
+from animas import Context, Service
 from magitech_harness import check_bundle_entries, create_harness
 from magitech_harness.agent.cancellation import AbortSignal
 from magitech_harness.cli import summarize_headless_outcome

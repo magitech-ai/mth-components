@@ -6,8 +6,8 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
-from anima import Context
-from anima.events import EventMode
+from animas import Context
+from animas.events import EventMode
 from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolService
 

@@ -11,7 +11,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from anima import Context, Service
+from animas import Context, Service
 from magitech_harness.shell.service import ShellResult
 
 logger = logging.getLogger("mth_plugins.sandbox")

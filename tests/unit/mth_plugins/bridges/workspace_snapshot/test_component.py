@@ -5,7 +5,7 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.bridges.workspace_snapshot.component import apply

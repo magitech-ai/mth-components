@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from anima import Context
+from animas import Context
 from magitech_harness.session.events import ToolCallData
 from magitech_harness.system_prompt.service import SystemPromptService
 from magitech_harness.tools.native_executor import apply as apply_native_executor

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from anima import Context, Disposer, Service
+from animas import Context, Disposer, Service
 from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.bridges.skills_registry.service import SkillsProviderRegistryService

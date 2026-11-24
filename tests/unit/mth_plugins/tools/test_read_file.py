@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.session.events import ToolCallData
 from magitech_harness.system_prompt.service import SystemPromptService
 from magitech_harness.tools.service import ToolService

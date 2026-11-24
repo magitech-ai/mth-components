@@ -1,6 +1,6 @@
 """Unit tests for SpanRecord and OtelTracerService."""
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.otel.tracer import OtelTracerService, SpanRecord
 

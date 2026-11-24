@@ -1,10 +1,10 @@
-"""Anima component entry point for mcp-bridge."""
+"""Animas component entry point for mcp-bridge."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.mcp.service import McpBridgeService
 
@@ -15,7 +15,7 @@ async def apply(
     auto_load: bool = True,
     **kwargs: Any,
 ) -> None:
-    """Anima component mounting McpBridgeService and loading configured servers."""
+    """Animas component mounting McpBridgeService and loading configured servers."""
     ctx.use(McpBridgeService)
     await ctx.flush()
 

@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import Any
 
-from anima import Context
+from animas import Context
 from magitech_harness.session.events import EventType, SessionEvent
 from magitech_harness.session.pairing import is_tool_pairing_balanced
 from magitech_harness.session.store import Session

@@ -7,7 +7,7 @@ import uuid
 from typing import Any
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.compaction.service import CompactionService
 from magitech_harness.llm.service import LLMService, MockLLMProvider
 from magitech_harness.llm.types import ModelResponse

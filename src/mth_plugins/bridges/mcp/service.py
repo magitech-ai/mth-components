@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from anima import Context, Disposer, Service
+from animas import Context, Disposer, Service
 from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.bridges.mcp.client import McpClient

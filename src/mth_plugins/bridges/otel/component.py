@@ -1,11 +1,11 @@
-"""Anima component entry point for OpenTelemetry distributed tracing."""
+"""Animas component entry point for OpenTelemetry distributed tracing."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
 
-from anima import Context
+from animas import Context
 from magitech_harness.tools.service import ToolCallData
 
 from mth_plugins.bridges.otel.tracer import OtelTracerService
@@ -16,7 +16,7 @@ def apply(
     config: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> OtelTracerService:
-    """Mounts OpenTelemetry distributed tracing instrumentation onto Anima context."""
+    """Mounts OpenTelemetry distributed tracing instrumentation onto Animas context."""
     cfg = {**(config or {}), **kwargs}
     service = OtelTracerService(ctx, cfg)
 

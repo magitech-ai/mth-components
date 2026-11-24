@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.guards.repeat_tool_reminder.component import apply

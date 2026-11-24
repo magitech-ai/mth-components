@@ -1,10 +1,10 @@
-"""Anima component entry point for read_file tool."""
+"""Animas component entry point for read_file tool."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.tools.read_file.read_file import (

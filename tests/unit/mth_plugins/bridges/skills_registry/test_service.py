@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.skills_registry.service import (
     SkillBundleInfo,

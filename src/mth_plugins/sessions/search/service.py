@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, ClassVar
 
-from anima import Context, Service
+from animas import Context, Service
 
 from mth_plugins.sessions.search.db import search_messages
 from mth_plugins.sessions.search.indexer import SessionIndexer
