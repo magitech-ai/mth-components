@@ -1,11 +1,11 @@
-"""Anima component entry point for skills session catalog + loader tool."""
+"""Animas component entry point for skills session catalog + loader tool."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.skills_loader.service import SkillsSessionCatalogService
 from mth_plugins.bridges.skills_registry.service import SkillsProviderRegistryService
@@ -17,7 +17,7 @@ async def apply(
     auto_activate: bool = True,
     **kwargs: Any,
 ) -> None:
-    """Mount skills session catalog + loader tool onto anima context.
+    """Mount skills session catalog + loader tool onto animas context.
 
     Registers SkillsSessionCatalogService, injects catalog as
     <system-reminder> message, and provides skill({name}) tool.

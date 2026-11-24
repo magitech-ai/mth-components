@@ -7,9 +7,9 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "anima"
-version = "0.3.0"
-source = { editable = "../anima" }
+name = "animas"
+version = "1.0.0"
+source = { editable = "../animas" }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -407,7 +407,7 @@ name = "magitech-harness"
 version = "0.3.0"
 source = { editable = "../magitech-harness" }
 dependencies = [
-    { name = "anima" },
+    { name = "animas" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -415,7 +415,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anima", editable = "../anima" },
+    { name = "animas", editable = "../animas" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "pydantic", specifier = ">=2.14.3" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -435,7 +435,7 @@ name = "mth-plugins"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [
-    { name = "anima" },
+    { name = "animas" },
     { name = "httpx" },
     { name = "magitech-harness" },
     { name = "pydantic" },
@@ -453,7 +453,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anima", editable = "../anima" },
+    { name = "animas", editable = "../animas" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "magitech-harness", editable = "../magitech-harness" },
     { name = "pydantic", specifier = ">=2.0.0" },

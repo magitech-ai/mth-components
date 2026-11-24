@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.skills_filesystem.service import (
     SkillsFilesystemProviderService,

@@ -1,4 +1,4 @@
-"""Anima component entry point for Language Server Protocol (LSP) diagnostics."""
+"""Animas component entry point for Language Server Protocol (LSP) diagnostics."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from anima import Context
+from animas import Context
 from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolCallData
 

@@ -1,4 +1,4 @@
-"""Anima component entry point for workspace-trust-gate."""
+"""Animas component entry point for workspace-trust-gate."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.guards.trust.gate import WorkspaceTrustGate
 
@@ -34,7 +34,7 @@ def apply(
     store_path: Path | str | None = None,
     **kwargs: Any,
 ) -> None:
-    """Anima component mounting WorkspaceTrustGate onto the context.
+    """Animas component mounting WorkspaceTrustGate onto the context.
 
     Mounts the trust gate as ``ctx.trust`` and registers it as a
     ``tools/pre-execute`` waterfall guard (ADR 0011: trust gate first,

@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from anima import Context, Service
+from animas import Context, Service
 
 from mth_plugins.bridges.lsp.client import LspClient
 

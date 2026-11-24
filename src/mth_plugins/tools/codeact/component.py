@@ -1,17 +1,17 @@
-"""Anima component entry point for CodeAct tool execution."""
+"""Animas component entry point for CodeAct tool execution."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.tools.codeact.codeact import CodeActExecutor
 
 
 def apply(ctx: Context, **kwargs: Any) -> CodeActExecutor:
-    """Mounts the CodeAct Python execution tool onto the Anima context."""
+    """Mounts the CodeAct Python execution tool onto the Animas context."""
     executor = CodeActExecutor(ctx)
 
     async def _handle_execute_python(args: dict[str, Any]) -> str:

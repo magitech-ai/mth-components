@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.agent.cancellation import AbortError, AbortSignal
 from magitech_harness.llm.service import LLMService
 from magitech_harness.llm.types import ModelChunk
@@ -221,7 +221,7 @@ def test_openrouter_provider_default_get_client() -> None:
 
 
 def test_openrouter_component_registration() -> None:
-    """Verifies OpenRouter component registration in Anima context."""
+    """Verifies OpenRouter component registration in Animas context."""
     ctx = Context()
     ctx.llm = LLMService(ctx)
 

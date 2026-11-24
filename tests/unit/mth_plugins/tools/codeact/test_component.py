@@ -1,7 +1,7 @@
 """Unit tests for CodeAct component registration."""
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.tools.service import ToolCallData, ToolResultData, ToolService
 
 from mth_plugins.tools.codeact.component import apply

@@ -1,11 +1,11 @@
-"""Anima component entry point for output truncation guardrail."""
+"""Animas component entry point for output truncation guardrail."""
 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.guards.truncation.truncation import (
     DEFAULT_MAX_BYTES,
@@ -64,7 +64,7 @@ def _truncate_content_blocks(
 
 
 def apply(ctx: Context, config: dict | None = None, **kwargs: Any) -> None:
-    """Anima component applying post-execute tool truncation guardrail."""
+    """Animas component applying post-execute tool truncation guardrail."""
     cfg = {**(config or {}), **kwargs}
     max_lines: int = cfg.get("max_lines", DEFAULT_MAX_LINES)
     max_bytes: int = cfg.get("max_bytes", DEFAULT_MAX_BYTES)

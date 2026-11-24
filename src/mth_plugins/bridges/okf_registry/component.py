@@ -1,10 +1,10 @@
-"""Anima component entry point for OKF provider registry."""
+"""Animas component entry point for OKF provider registry."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.okf_registry.service import OKFProviderRegistryService
 
@@ -13,7 +13,7 @@ async def apply(
     ctx: Context,
     **kwargs: Any,
 ) -> None:
-    """Mount OKF provider registry onto anima context.
+    """Mount OKF provider registry onto animas context.
 
     Registers OKFProviderRegistryService as ``ctx.okf_registry``.
     The filesystem provider discovers bundles and registers them here.

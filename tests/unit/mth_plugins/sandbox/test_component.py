@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.sandbox.component import apply
 from mth_plugins.sandbox.ladder import PrivilegeLevel, SandboxService

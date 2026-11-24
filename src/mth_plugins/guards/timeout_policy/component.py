@@ -1,11 +1,11 @@
-"""Anima component entry point for the tool-call timeout_policy guardrail."""
+"""Animas component entry point for the tool-call timeout_policy guardrail."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any, cast
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.guards.timeout_policy.policy import TimeoutPolicy
 
@@ -16,7 +16,7 @@ def apply(
     ctx: Context,
     **kwargs: Any,
 ) -> None:
-    """Mount the timeout_policy guard onto the Anima context.
+    """Mount the timeout_policy guard onto the Animas context.
 
     Hooks ``tools/execute`` to wrap tool dispatches with per-tool deadline
     signals and map deadline expiry to a structured ``TOOL_TIMEOUT`` error.

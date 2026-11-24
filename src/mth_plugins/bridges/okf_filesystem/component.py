@@ -1,11 +1,11 @@
-"""Anima component entry point for OKF filesystem provider."""
+"""Animas component entry point for OKF filesystem provider."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.okf_filesystem.service import OKFFilesystemProviderService
 from mth_plugins.bridges.okf_registry.service import OKFProviderRegistryService
@@ -17,7 +17,7 @@ async def apply(
     auto_discover: bool = True,
     **kwargs: Any,
 ) -> None:
-    """Mount OKF filesystem provider onto anima context.
+    """Mount OKF filesystem provider onto animas context.
 
     Registers OKFFilesystemProviderService and discovers OKF bundles
     under knowledge_dir (default: agents-home/knowledge).

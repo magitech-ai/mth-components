@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.steering.component import apply
 

@@ -1,4 +1,4 @@
-"""Anima component entry point for the approval guardrail."""
+"""Animas component entry point for the approval guardrail."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from anima import Context
+from animas import Context
 from magitech_harness.approval.service import ApprovalRequest
 from magitech_harness.tools.service import ToolCallData
 
@@ -21,7 +21,7 @@ def apply(
     require_all_mutations: bool = True,
     **kwargs: Any,
 ) -> None:
-    """Mounts the approval guard onto the Anima context."""
+    """Mounts the approval guard onto the Animas context."""
     root = workspace_root or Path.cwd()
     workspace_policy = root / ".agents" / "approval" / "policy.toml"
     global_policy = Path.home() / ".agents" / "approval" / "policy.toml"

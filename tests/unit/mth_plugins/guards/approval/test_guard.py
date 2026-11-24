@@ -6,7 +6,7 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.approval.service import ApprovalRequest, ApprovalService
 from magitech_harness.session.events import EventType
 from magitech_harness.session.store import Session

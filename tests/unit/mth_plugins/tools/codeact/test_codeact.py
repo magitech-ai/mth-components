@@ -3,7 +3,7 @@
 from typing import Any, ClassVar
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolService
 

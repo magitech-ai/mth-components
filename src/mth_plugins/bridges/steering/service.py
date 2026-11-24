@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from anima import Context, Disposer, Service
+from animas import Context, Disposer, Service
 
 from mth_plugins.bridges.steering.collector import (
     collect_steering_documents,

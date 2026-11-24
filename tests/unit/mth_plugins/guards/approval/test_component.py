@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.approval.service import ApprovalRequest, ApprovalService
 from magitech_harness.tools.schema import define_tool
 from magitech_harness.tools.service import ToolCallData, ToolResultData, ToolService

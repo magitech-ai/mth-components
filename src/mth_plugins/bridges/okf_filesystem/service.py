@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from anima import Context, Service
+from animas import Context, Service
 
 from mth_plugins.bridges.okf_registry.service import (
     OKFBundleInfo,

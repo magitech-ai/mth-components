@@ -7,7 +7,7 @@ Official portable components and marketplace catalog for [Magitech Harness](http
 `mth-plugins` contains model providers, domain tools, guards, bridges and
 session services adhering to the **Everything is a Component** architecture.
 Each component ships a `manifest.json` and is registered in the marketplace
-catalog (`src/mth_plugins/index.json`). Components mount into an `anima`
+catalog (`src/mth_plugins/index.json`). Components mount into an `animas`
 context through `apply(ctx)` and register capabilities on explicit services
 such as `ctx.llm` and `ctx.tools`.
 

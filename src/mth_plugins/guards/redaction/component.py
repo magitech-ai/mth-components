@@ -1,11 +1,11 @@
-"""Anima component entry point for the tool-output redaction guard."""
+"""Animas component entry point for the tool-output redaction guard."""
 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.guards.redaction.redaction import (
     SECRET_ENV_NAMES,

@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.tools.service import ToolCallData, ToolResultData
 
 from mth_plugins.bridges.otel.component import apply

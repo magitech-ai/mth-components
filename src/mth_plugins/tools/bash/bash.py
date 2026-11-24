@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024  # 64 KiB in-memory limit
 
@@ -22,7 +22,7 @@ async def handle_bash(
 
     Args:
         args: Dictionary containing 'command' and optional 'timeout_ms' and 'cwd'.
-        ctx: Optional Anima context providing ctx.shell.
+        ctx: Optional Animas context providing ctx.shell.
         spill_dir: Optional custom spill directory (defaults to ~/.agents/spill).
         max_output_bytes: In-memory budget before output is truncated and spilled.
 

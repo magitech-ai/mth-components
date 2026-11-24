@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from anima import Context
+from animas import Context
 from magitech_harness.agent.cancellation import AbortSignal, deadline, timeout_of
 
 TOOL_TIMEOUT = "TOOL_TIMEOUT"
@@ -30,7 +30,7 @@ class TimeoutPolicy:
     """Wraps tool dispatches with per-tool deadline signals.
 
     Args:
-        ctx: The Anima context (provides ``ctx.tools`` for tool definition
+        ctx: The Animas context (provides ``ctx.tools`` for tool definition
             lookup).
     """
 

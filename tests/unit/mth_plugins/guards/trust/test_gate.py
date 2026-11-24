@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import AsyncMock
 
-from anima import Context
+from animas import Context
 from magitech_harness.approval.service import ApprovalService
 
 from mth_plugins.guards.trust.gate import WorkspaceTrustGate

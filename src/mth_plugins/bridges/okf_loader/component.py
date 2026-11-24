@@ -1,10 +1,10 @@
-"""Anima component entry point for OKF session catalog + loader tool."""
+"""Animas component entry point for OKF session catalog + loader tool."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.okf_loader.service import OKFSessionCatalogService
 from mth_plugins.bridges.okf_registry.service import OKFProviderRegistryService
@@ -15,7 +15,7 @@ async def apply(
     auto_activate: bool = True,
     **kwargs: Any,
 ) -> None:
-    """Mount OKF session catalog + loader tool onto anima context.
+    """Mount OKF session catalog + loader tool onto animas context.
 
     Registers OKFSessionCatalogService, injects catalog as
     <system-reminder> message, and provides okf_bundle({name}) tool.

@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from anima import Context, Service
+from animas import Context, Service
 
 GENAI_SYSTEM = "magitech"
 

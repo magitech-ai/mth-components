@@ -1,10 +1,10 @@
-"""Anima component entry point for the keyless web search tool."""
+"""Animas component entry point for the keyless web search tool."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 from magitech_harness.tools.schema import define_tool
 
 from mth_plugins.tools.web_search.handlers import handle_web_search

@@ -1,11 +1,11 @@
-"""Anima component entry point for the repeat_tool_reminder guardrail."""
+"""Animas component entry point for the repeat_tool_reminder guardrail."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any, cast
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.guards.repeat_tool_reminder.guard import RepeatToolReminder
 
@@ -21,7 +21,7 @@ def apply(
     arguments_preview_chars: int = 500,
     **kwargs: Any,
 ) -> None:
-    """Mount the repeat_tool_reminder guard onto the Anima context.
+    """Mount the repeat_tool_reminder guard onto the Animas context.
 
     Hooks ``tools/post-execute`` to detect consecutive identical calls and
     ``agent/pre-step`` to clear per-agent chains on new user prompts.

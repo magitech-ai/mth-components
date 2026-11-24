@@ -1,11 +1,11 @@
-"""Anima component entry point for skills filesystem provider."""
+"""Animas component entry point for skills filesystem provider."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.skills_filesystem.service import (
     SkillsFilesystemProviderService,
@@ -20,7 +20,7 @@ async def apply(
     auto_discover: bool = True,
     **kwargs: Any,
 ) -> None:
-    """Mount skills filesystem provider onto anima context.
+    """Mount skills filesystem provider onto animas context.
 
     Registers SkillsFilesystemProviderService and discovers skills under
     skills_dir with the given scope. For multi-root discovery with scope

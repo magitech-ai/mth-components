@@ -1,10 +1,10 @@
-"""Anima component entry point for steering-bridge."""
+"""Animas component entry point for steering-bridge."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.bridges.steering.service import SteeringBridgeService
 
@@ -14,7 +14,7 @@ async def apply(
     config: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> None:
-    """Anima component mounting SteeringBridgeService and refreshing guidelines."""
+    """Animas component mounting SteeringBridgeService and refreshing guidelines."""
     cfg = {**(config or {}), **kwargs}
     auto_refresh = bool(cfg.get("auto_refresh", True))
     ctx.use(

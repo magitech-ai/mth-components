@@ -11,7 +11,7 @@ Production agent deployments require comprehensive observability into multi-turn
 
 ## Decision
 1. **OpenTelemetry Tracer Integration**:
-   The `opentelemetry-bridge` registers an OpenTelemetry tracer provider and hooks into Anima context events and harness execution waterfalls:
+   The `opentelemetry-bridge` registers an OpenTelemetry tracer provider and hooks into Animas context events and harness execution waterfalls:
    - **Turn Spans**: Measures duration and attributes of full turn lifecycles (`magitech.turn`).
    - **Provider Spans**: Captures model requests (`magitech.llm.call`), recording model name, prompt token count, completion token count, and streaming TTFT (time-to-first-token).
    - **Tool Spans**: Instruments tool invocations (`magitech.tool.execute`), capturing tool name, execution status, and duration.

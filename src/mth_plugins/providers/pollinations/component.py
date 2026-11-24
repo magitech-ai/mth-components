@@ -1,10 +1,10 @@
-"""Anima component entry point for Pollinations model provider."""
+"""Animas component entry point for Pollinations model provider."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from anima import Context
+from animas import Context
 
 from mth_plugins.providers.pollinations.provider import PollinationsProvider
 
@@ -19,7 +19,7 @@ def apply(
     """Mounts the Pollinations provider onto ctx.llm.
 
     Args:
-        ctx: Active Anima Context.
+        ctx: Active Animas Context.
         api_key: Optional API key (Pollinations works anonymously without one).
         base_url: API base URL.
         default_model: Default model identifier.

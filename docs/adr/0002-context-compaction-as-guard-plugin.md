@@ -10,7 +10,7 @@ Conversations in multi-turn agent sessions grow over time, eventually exceeding 
 ## Decision
 
 We implement context compaction as an extensible guard plugin (`compaction-guard`):
-1. The compaction plugin registers an interceptor on the Anima waterfall event `turn/stream`.
+1. The compaction plugin registers an interceptor on the Animas waterfall event `turn/stream`.
 2. When prompt token pressure exceeds a configured threshold (or upon receiving an explicit `/compact` slash command), the plugin determines a balanced cut point using `is_tool_pairing_balanced`.
 3. The plugin prompts the active LLM provider (`ctx.llm.generate`) with a structured summarization instruction covering goals, findings, and ongoing tasks.
 4. The resulting summary is appended to the session log as an immutable `session/compaction` event, allowing the core projection engine to fold previous events for subsequent model calls.

@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.tools.service import ToolService
 
 from mth_plugins.tools.subagent.component import apply

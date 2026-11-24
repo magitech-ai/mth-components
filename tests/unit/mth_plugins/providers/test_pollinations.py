@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-from anima import Context
+from animas import Context
 from magitech_harness.agent.cancellation import AbortError, AbortSignal
 from magitech_harness.llm.service import LLMService
 from magitech_harness.llm.types import ModelChunk
@@ -435,7 +435,7 @@ async def test_pollinations_provider_stream_error() -> None:
 
 
 def test_pollinations_component_registration() -> None:
-    """Verifies Pollinations component registration in Anima context."""
+    """Verifies Pollinations component registration in Animas context."""
     ctx = Context()
     ctx.llm = LLMService(ctx)
 
