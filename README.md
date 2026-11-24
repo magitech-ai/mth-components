@@ -38,7 +38,7 @@ discovery live in `src/mth_plugins/index.py`.
 ```sh
 uv sync
 python3 ../agents-home/scripts/check_all.py --fast   # local pre-commit gate
-uv run python -m pytest -q                           # full suite, 100% floor
+uv run pytest -q                           # full suite, 100% floor
 ```
 
 CI runs the full shared gate — lint, format, strict mypy, tests, and a 100%
