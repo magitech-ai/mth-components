@@ -39,6 +39,7 @@ from mth_components.upstream_skills.types import (
 DEFAULT_SKILLS_URLS = ("https://codeload.github.com",)
 DEFAULT_TIMEOUT_MS = 120_000
 MAX_TIMER_DELAY_MS = 2_147_483_647
+MAX_ARCHIVE_BYTES = 64 * 1024 * 1024
 ENTRY_FRONT_MATTER = re.compile(r"^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)")
 SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 BUNDLED_SKILL_RANK = 600
@@ -155,7 +156,10 @@ def read_archive(payload: bytes, selection: UpstreamSkillSet) -> dict[str, bytes
             keep = path == selection.license or path.startswith(
                 f"{selection.directory}/"
             )
-            if not keep or any(path == exclude for exclude in selection.exclude):
+            if not keep or (
+                path != selection.license
+                and any(path == exclude for exclude in selection.exclude)
+            ):
                 continue
             if not member.isfile():
                 raise UpstreamSkillsError(
@@ -247,7 +251,11 @@ class UpstreamSkillsService(Service):
                 destination = staging / path
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(content)
-            staging.replace(target)
+            if target.is_dir():
+                # Another process published this pin first; keep its directory.
+                shutil.rmtree(staging, ignore_errors=True)
+            else:
+                staging.replace(target)
         finally:
             if staging.exists():
                 shutil.rmtree(staging, ignore_errors=True)
@@ -268,6 +276,27 @@ class UpstreamSkillsService(Service):
             ):
                 shutil.rmtree(sibling, ignore_errors=True)
 
+    async def _fetch_bounded(self, url: str) -> bytes:
+        """Fetch an archive with a hard raw-size cap and a whole-request deadline."""
+        chunks: list[bytes] = []
+        total = 0
+        async with (
+            httpx.AsyncClient(timeout=self.timeout_ms / 1000) as client,
+            client.stream("GET", url) as response,
+        ):
+            if response.status_code < 200 or response.status_code >= 300:
+                raise UpstreamSkillsError(
+                    f"HTTP {response.status_code}", "UPSTREAM_HTTP_ERROR"
+                )
+            async for chunk in response.aiter_bytes():
+                total += len(chunk)
+                if total > MAX_ARCHIVE_BYTES:
+                    raise UpstreamSkillsError(
+                        "archive exceeds the raw byte cap", "UPSTREAM_HTTP_ERROR"
+                    )
+                chunks.append(chunk)
+        return b"".join(chunks)
+
     async def _download(
         self,
         caller: Context,
@@ -280,13 +309,10 @@ class UpstreamSkillsService(Service):
         for prefix in self.urls:
             url = archive_url(prefix, options.set)
             try:
-                async with httpx.AsyncClient(timeout=self.timeout_ms / 1000) as client:
-                    response = await client.get(url)
-                if response.status_code < 200 or response.status_code >= 300:
-                    raise UpstreamSkillsError(
-                        f"HTTP {response.status_code}", "UPSTREAM_HTTP_ERROR"
-                    )
-                files = read_archive(response.content, options.set)
+                payload = await asyncio.wait_for(
+                    self._fetch_bounded(url), timeout=self.timeout_ms / 1000
+                )
+                files = read_archive(payload, options.set)
                 directory = self._publish(caller, options, files)
                 handle.directory = str(directory)
                 handle.state = "installed"
@@ -297,6 +323,14 @@ class UpstreamSkillsService(Service):
                 return
             except Exception as error:
                 last_error = error
+        if self._directory(caller, options).is_dir():
+            handle.state = "installed"
+            handle.directory = str(self._directory(caller, options))
+            self._register_skill(
+                caller, options, handle, parse_entry(Path(options.entry))
+            )
+            handle.notify()
+            return
         handle.state = "failed"
         handle.notify()
         if last_error is not None:
@@ -334,9 +368,10 @@ class UpstreamSkillsService(Service):
         caller = self.ctx
         options.set.validate()
         name, description, body = parse_entry(Path(options.entry))
-        if name in self._handles:
+        if options.name in self._handles:
             raise UpstreamSkillsError(
-                f'upstream skill provider "{name}" already exists', "UPSTREAM_DUPLICATE"
+                f'upstream skill provider "{options.name}" already exists',
+                "UPSTREAM_DUPLICATE",
             )
         directory = self._directory(caller, options)
         installed = directory.is_dir()
@@ -346,21 +381,28 @@ class UpstreamSkillsService(Service):
             state="installed" if installed else "failed",
         )
 
+        withdrawn = False
+
         def retry() -> None:
-            if options.skills_dir is not None or handle.state == "downloading":
+            if withdrawn or options.skills_dir is not None or handle.state != "failed":
                 return
             task = asyncio.create_task(self._download(caller, options, handle))
             self._tasks[name] = task
 
         def dispose() -> None:
+            nonlocal withdrawn
+            withdrawn = True
             task = self._tasks.pop(name, None)
             if task is not None:
                 task.cancel()
-            self._handles.pop(name, None)
+            registry = caller.get("skills_registry", None, strict=False)
+            if registry is not None:
+                registry.skills.pop(name, None)
+            self._handles.pop(options.name, None)
 
         handle.retry = retry
         handle.dispose = dispose
-        self._handles[name] = handle
+        self._handles[options.name] = handle
         if installed:
             self._register_skill(caller, options, handle, (name, description, body))
         else:

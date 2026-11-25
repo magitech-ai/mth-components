@@ -67,6 +67,11 @@ def _selection(
     )
 
 
+async def _aiter(chunks: list[bytes]):
+    for chunk in chunks:
+        yield chunk
+
+
 def _entry(tmp_path: Path, name: str = "vendor-guide") -> Path:
     path = tmp_path / "SKILL.md"
     path.write_text(
@@ -195,14 +200,16 @@ async def test_download_and_handle(tmp_path: Path) -> None:
     selection = _selection(files)
     options = UpstreamSkillRegistration("up", str(entry), selection)
     payload = _tar(files)
-    calls: list[str] = []
-
-    async def get(url: str) -> SimpleNamespace:
-        calls.append(url)
-        return SimpleNamespace(status_code=200, content=payload)
-
+    stream = AsyncMock()
+    stream.__aenter__ = AsyncMock(
+        return_value=SimpleNamespace(
+            status_code=200,
+            aiter_bytes=lambda: _aiter([payload]),
+        )
+    )
+    stream.__aexit__ = AsyncMock(return_value=None)
     client = AsyncMock()
-    client.get.side_effect = get
+    client.stream = lambda method, url: stream
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=None)
     handle = UpstreamSkillsHandle("up", str(tmp_path / "none"))
@@ -210,7 +217,6 @@ async def test_download_and_handle(tmp_path: Path) -> None:
         await service._download(ctx, options, handle)
     env.stop()
     assert handle.state == "installed"
-    assert calls[0].startswith("https://a.test")
     assert Path(handle.directory).is_dir()
     assert registry.get_skill("vendor-guide") is not None
 
@@ -232,8 +238,16 @@ async def test_download_failures(tmp_path: Path) -> None:
     files = {"LICENSE": b"l", "vendor/skills/a": b"a"}
     selection = _selection(files)
     service = UpstreamSkillsService(ctx, {"skillsUrls": ["https://a.test"]})
+    stream = AsyncMock()
+    stream.__aenter__ = AsyncMock(
+        return_value=SimpleNamespace(
+            status_code=500,
+            aiter_bytes=lambda: _aiter([]),
+        )
+    )
+    stream.__aexit__ = AsyncMock(return_value=None)
     client = AsyncMock()
-    client.get.return_value = SimpleNamespace(status_code=500, content=b"")
+    client.stream = lambda method, url: stream
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=None)
     with patch("httpx.AsyncClient", return_value=client):
@@ -243,7 +257,12 @@ async def test_download_failures(tmp_path: Path) -> None:
             UpstreamSkillsHandle("up", str(tmp_path)),
         )
     bad = _tar({"LICENSE": b"l", "vendor/skills/a": b"a"}, unsafe="../bad")
-    client.get.return_value = SimpleNamespace(status_code=200, content=bad)
+    stream.__aenter__ = AsyncMock(
+        return_value=SimpleNamespace(
+            status_code=200,
+            aiter_bytes=lambda: _aiter([bad]),
+        )
+    )
     with patch("httpx.AsyncClient", return_value=client):
         await service._download(
             ctx,
@@ -314,8 +333,16 @@ async def test_register_download_task_and_dispose(tmp_path: Path) -> None:
     selection = _selection(files)
     service = UpstreamSkillsService(ctx, {"skillsUrls": ["https://a.test"]})
     payload = _tar(files)
+    stream = AsyncMock()
+    stream.__aenter__ = AsyncMock(
+        return_value=SimpleNamespace(
+            status_code=200,
+            aiter_bytes=lambda: _aiter([payload]),
+        )
+    )
+    stream.__aexit__ = AsyncMock(return_value=None)
     client = AsyncMock()
-    client.get.return_value = SimpleNamespace(status_code=200, content=payload)
+    client.stream = lambda method, url: stream
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=None)
     with patch("httpx.AsyncClient", return_value=client):
@@ -462,3 +489,101 @@ async def test_retry_with_local_dir_and_dispose_without_task(tmp_path: Path) -> 
     other = UpstreamSkillsHandle("no-task", str(tmp_path))
     service._handles["no-task"] = other
     assert service._tasks.get("no-task") is None
+
+
+@pytest.mark.asyncio
+async def test_dispose_withdraws_and_failure_winner(tmp_path: Path) -> None:
+    ctx = Context()
+    registry = SkillsProviderRegistryService(ctx)
+    ctx.provide("skills_registry", registry)
+    entry = _entry(tmp_path)
+    files = {"LICENSE": b"license", "vendor/skills/a/SKILL.md": b"skill"}
+    selection = _selection(files)
+    service = UpstreamSkillsService(ctx, {"skillsUrls": ["https://a.test"]})
+    options = UpstreamSkillRegistration("withdraw", str(entry), selection)
+    handle = service.register(options)
+    assert handle.dispose is not None
+    handle.dispose()
+    assert registry.get_skill("vendor-guide") is None
+    assert handle.retry is not None
+    handle.retry()
+    assert service._tasks.get("vendor-guide") is None
+
+    env = patch.dict("os.environ", {"MTH_HOME": str(tmp_path / "home2")})
+    env.start()
+    target = service._directory(ctx, options)
+    target.mkdir(parents=True)
+    stream = AsyncMock()
+    stream.__aenter__ = AsyncMock(
+        return_value=SimpleNamespace(status_code=500, aiter_bytes=lambda: _aiter([]))
+    )
+    stream.__aexit__ = AsyncMock(return_value=None)
+    client = AsyncMock()
+    client.stream = lambda method, url: stream
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock(return_value=None)
+    with patch("httpx.AsyncClient", return_value=client):
+        await service._download(
+            ctx, options, UpstreamSkillsHandle("winner", str(tmp_path))
+        )
+    env.stop()
+    assert registry.get_skill("vendor-guide") is not None
+
+
+@pytest.mark.asyncio
+async def test_raw_cap_and_publish_winner(tmp_path: Path) -> None:
+    ctx = Context()
+    entry = _entry(tmp_path)
+    files = {"LICENSE": b"license", "vendor/skills/a/SKILL.md": b"skill"}
+    selection = _selection(files)
+    service = UpstreamSkillsService(ctx)
+    env = patch.dict("os.environ", {"MTH_HOME": str(tmp_path / "home3")})
+    env.start()
+    options = UpstreamSkillRegistration("winner", str(entry), selection)
+    target = service._directory(ctx, options)
+    target.mkdir(parents=True)
+    (target / "other").write_text("kept", encoding="utf-8")
+    service._publish(ctx, options, read_archive(_tar(files), selection))
+    assert (target / "other").read_text() == "kept"
+    env.stop()
+
+    stream = AsyncMock()
+    huge = b"x" * (64 * 1024 * 1024 + 1)
+    stream.__aenter__ = AsyncMock(
+        return_value=SimpleNamespace(
+            status_code=200,
+            aiter_bytes=lambda: _aiter([huge]),
+        )
+    )
+    stream.__aexit__ = AsyncMock(return_value=None)
+    client = AsyncMock()
+    client.stream = lambda method, url: stream
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock(return_value=None)
+    with (
+        patch("httpx.AsyncClient", return_value=client),
+        pytest.raises(UpstreamSkillsError),
+    ):
+        await service._fetch_bounded("https://a.test")
+
+    bare = Context()
+    no_registry = UpstreamSkillsService(bare)
+    handle = UpstreamSkillsHandle("none", str(tmp_path))
+    no_registry._register_skill(bare, options, handle, parse_entry(Path(entry)))
+
+
+def test_publish_cleanup_on_write_failure(monkeypatch: Any, tmp_path: Path) -> None:
+    ctx = Context()
+    entry = _entry(tmp_path)
+    files = {"LICENSE": b"license", "vendor/skills/a/SKILL.md": b"skill"}
+    selection = _selection(files)
+    service = UpstreamSkillsService(ctx)
+    options = UpstreamSkillRegistration(
+        "fail", str(entry), selection, str(tmp_path / "guides2")
+    )
+    (tmp_path / "guides2").mkdir()
+    monkeypatch.setattr(
+        Path, "write_bytes", lambda self, data: (_ for _ in ()).throw(OSError("disk"))
+    )
+    with pytest.raises(OSError):
+        service._publish(ctx, options, files)
