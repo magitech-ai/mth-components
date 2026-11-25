@@ -42,14 +42,14 @@ def test_component_artifact_properties(tmp_path: Path) -> None:
     assert art.entry_point_path == component_dir / "component.py"
 
     # Inside REPO_ROOT
-    inside_dir = REPO_ROOT / "src" / "mth_components" / "tools" / "bash"
+    inside_dir = REPO_ROOT / "src" / "mth_components" / "tools" / "dev_tools"
     art_inside = ComponentArtifact(
-        name="bash-tool",
+        name="dev-tools",
         kind="tool",
         path=inside_dir,
         manifest=manifest,
     )
-    assert art_inside.relative_path == "src/mth_components/tools/bash"
+    assert art_inside.relative_path == "src/mth_components/tools/dev_tools"
 
 
 def test_determine_kind(tmp_path: Path) -> None:
@@ -217,9 +217,9 @@ def test_index_json_is_package_data() -> None:
 def test_discover_installed_returns_mount_targets() -> None:
     records = discover_installed()
     assert records
-    fs = next((r for r in records if r["name"] == "fs-search-tool"), None)
-    assert fs is not None
-    assert fs["target"] == "mth_components.tools.fs_search.component:apply"
+    dev = next((r for r in records if r["name"] == "dev-tools"), None)
+    assert dev is not None
+    assert dev["target"] == "mth_components.tools.dev_tools.component:apply"
     for record in records:
         assert record["target"].startswith("mth_components.")
         assert record["target"].endswith(":apply")
@@ -228,5 +228,5 @@ def test_discover_installed_returns_mount_targets() -> None:
 def test_scan_default_root_is_package_root() -> None:
     artifacts = scan_components(PACKAGE_ROOT)
     names = {a.name for a in artifacts}
-    assert "bash-tool" in names
-    assert "fs-search-tool" in names
+    assert "dev-tools" in names
+    assert "subagent-tool" in names

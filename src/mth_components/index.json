@@ -22,16 +22,6 @@
     }
   },
   "tools": {
-    "bash-tool": {
-      "version": "0.1.0",
-      "description": "Subprocess shell execution tool for Magitech Harness",
-      "path": "tools/bash",
-      "entry_point": "component.py:apply",
-      "types": [
-        "Tool"
-      ],
-      "enabled": true
-    },
     "codeact-tool": {
       "version": "0.1.0",
       "description": "Sandboxed CodeAct Python execution environment with AST write-protection and tool auto-dispatching for Magitech Harness",
@@ -42,50 +32,10 @@
       ],
       "enabled": true
     },
-    "edit-file-tool": {
-      "version": "0.1.0",
-      "description": "Replace target string with replacement string in a file for Magitech Harness",
-      "path": "tools/edit_file",
-      "entry_point": "component.py:apply",
-      "types": [
-        "Tool"
-      ],
-      "enabled": true
-    },
-    "fs-search-tool": {
-      "version": "0.1.0",
-      "description": "Tier 1 filesystem search tools (glob and grep) for Magitech Harness",
-      "path": "tools/fs_search",
-      "entry_point": "component.py:apply",
-      "types": [
-        "Tool"
-      ],
-      "enabled": true
-    },
-    "read-file-tool": {
-      "version": "0.1.0",
-      "description": "Read file contents with line offset and limit pagination for Magitech Harness",
-      "path": "tools/read_file",
-      "entry_point": "component.py:apply",
-      "types": [
-        "Tool"
-      ],
-      "enabled": true
-    },
     "subagent-tool": {
       "version": "0.1.0",
       "description": "In-process subagent orchestration triad with workspace isolation and cancellation cascading for Magitech Harness",
       "path": "tools/subagent",
-      "entry_point": "component.py:apply",
-      "types": [
-        "Tool"
-      ],
-      "enabled": true
-    },
-    "write-file-tool": {
-      "version": "0.1.0",
-      "description": "Write text content to a file, creating parent directories for Magitech Harness",
-      "path": "tools/write_file",
       "entry_point": "component.py:apply",
       "types": [
         "Tool"

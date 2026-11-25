@@ -182,7 +182,7 @@ def discover_installed() -> list[dict[str, Any]]:
     """Flatten the shipped catalog into records for harness component discovery.
 
     Each record's ``target`` is the exact module path a user puts in a profile
-    row to mount the component, e.g. ``mth_components.tools.fs_search.component:apply``.
+    row to mount the component, e.g. ``mth_components.tools.dev_tools.component:apply``.
     """
     result: list[dict[str, Any]] = []
     for section, entries in load_index().items():

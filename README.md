@@ -19,7 +19,7 @@ such as `ctx.llm` and `ctx.tools`.
 | Category   | Components | Source |
 | :--------- | :--------- | :----- |
 | Providers  | `openrouter-provider`, `pollinations-provider` (*) | `src/mth_components/providers/` |
-| Tools      | `bash-tool`, `codeact-tool`, `edit-file-tool`, `fs-search-tool`, `fs-extra-tools`, `code-analysis-tools`, `web-search-tool`, `verify-repo-tool`, `dev-tools`, `read-file-tool`, `subagent-tool`, `write-file-tool` | `src/mth_components/tools/` |
+| Tools      | `codeact-tool`, `fs-extra-tools`, `code-analysis-tools`, `web-search-tool`, `verify-repo-tool`, `dev-tools`, `subagent-tool` | `src/mth_components/tools/` |
 | Guards     | `approval-guard`, `compaction-guard`, `redaction-guard`, `repeat-tool-reminder`, `timeout-policy`, `truncation-guard`, `workspace-trust-gate` | `src/mth_components/guards/` |
 | Bridges    | `lsp-bridge`, `mcp-bridge`, `opentelemetry-bridge`, `skills-registry`, `skills-filesystem`, `skills-loader`, `okf-registry`, `okf-filesystem`, `okf-loader`, `steering-bridge`, `workspace-snapshot` | `src/mth_components/bridges/` |
 | Sandboxes  | `sandbox-ladder` | `src/mth_components/sandbox/` |
@@ -27,7 +27,7 @@ such as `ctx.llm` and `ctx.tools`.
 
 (*) Pollinations is a magitech-only keyless provider. The Agent Skills and OKF
 bridges are Magitech extensions. None of them is parity; see
-[PARITY.md](PARITY.md) for the ownership rule and the current transition state.
+[PARITY.md](PARITY.md) for the ownership rule and the relocation record.
 
 ## Discovery and installation
 

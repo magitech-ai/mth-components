@@ -1,13 +1,15 @@
-"""Workspace-rooted path confinement for filesystem tools.
+"""Workspace-rooted path confinement for marketplace filesystem extras.
 
-Collapses ``..`` and resolves symlinks before checking containment, matching
-a canonicalized workspace boundary. An escape raises
-:class:`PathEscapeError` with a clear message; callers surface it as an error.
+A private copy: this repository may only import *released* harness surface, and
+this helper is used by `fs_extra` alone. The harness owns the copy its base
+tools use (`magitech_harness.tools.path_guard`).
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+
+__all__ = ["PathEscapeError", "confined_path"]
 
 
 class PathEscapeError(ValueError):
@@ -24,6 +26,3 @@ def confined_path(root: Path | str, raw: str) -> Path:
     if resolved != base and base not in resolved.parents:
         raise PathEscapeError(f"path escapes workspace: {raw}")
     return resolved
-
-
-__all__ = ["PathEscapeError", "confined_path"]

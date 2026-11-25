@@ -465,19 +465,54 @@ async def test_child_ctx_bundle_built_copies_providers_and_persists(
     parent_ctx.llm.register_provider("mock", mock_provider)
     parent_ctx.llm.register_provider("alt", alt_provider)
     parent_ctx.llm.set_active_provider("alt")
+    # A custom parent tool must be copied where the child bundle does not
+    # already mount that name; this covers both the copy and the skip.
+    parent_ctx.tools.register(
+        define_tool(
+            name="probe_custom",
+            description="custom",
+            parameters={},
+            execute=lambda _a: "ok",
+        )
+    )
 
     manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})
     captured: list[Context] = []
+    base_factory = _bundle_child_factory(captured=captured)
+
+    def _factory_with_preloaded(
+        storage_dir: Path | str | None = None, **kwargs: Any
+    ) -> Context:
+        # Pre-load one parent-named tool so the copy loop also covers the
+        # "child already mounts this name" path on every harness release.
+        ctx = base_factory(storage_dir=storage_dir, **kwargs)
+
+        class _PreloadCustom:
+            inject: ClassVar[list[str]] = ["tools"]
+
+            def __init__(self, c: Context) -> None:
+                c.tools.register(
+                    define_tool(
+                        name="probe_custom",
+                        description="custom",
+                        parameters={},
+                        execute=lambda _a: "ok",
+                    )
+                )
+
+        ctx.use(_PreloadCustom)
+        return ctx
+
     with patch(
         "mth_components.tools.subagent.manager.create_harness",
-        side_effect=_bundle_child_factory(captured=captured),
+        side_effect=_factory_with_preloaded,
     ):
         recs = await manager.invoke(
             [
                 SubagentSpec(
                     role="worker",
                     prompt="Do work",
-                    allowed_tools=frozenset({"read_file"}),
+                    allowed_tools=frozenset({"read_file", "probe_custom"}),
                     wait=True,
                 )
             ]
@@ -486,7 +521,7 @@ async def test_child_ctx_bundle_built_copies_providers_and_persists(
     rec = recs[0]
     assert rec.state == SubagentState.COMPLETED
     assert rec.summary == "Turn result"
-    assert rec.effective_tools == ["read_file"]
+    assert rec.effective_tools == ["read_file", "probe_custom"]
 
     assert len(captured) == 1
     child_ctx = captured[0]
@@ -495,10 +530,11 @@ async def test_child_ctx_bundle_built_copies_providers_and_persists(
     assert set(child_ctx.llm.providers) == {"mock", "alt"}
     assert child_ctx.llm.active_provider is alt_provider
 
-    # Tools filtered through the public seams: allowed tool present,
-    # unlisted and triad tools absent.
+    # The bundle mounts the base tool set; the allowed set filters copied
+    # parent tools and restricts the child's own scope, and the delegation
+    # triad never reaches a child.
     assert child_ctx.tools.get("read_file") is not None
-    assert child_ctx.tools.get("write_file") is None
+    assert "write_file" not in rec.effective_tools
     assert child_ctx.tools.get("invoke_subagent") is None
 
     # The bundle-built child carries rows the old child never had.
@@ -613,3 +649,75 @@ async def test_child_agent_with_model_slug(parent_ctx: Context, tmp_path: Path) 
             ]
         )
     assert recs[0].state == SubagentState.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_allowed_set_with_no_mounted_names_denies_essentially_everything(
+    parent_ctx: Context, tmp_path: Path
+) -> None:
+    """An unsatisfiable allowed set fails closed, not open.
+
+    The child bundle mounts base tools, so skipping the restriction when the
+    intersection is empty would hand the child every bundle tool, shell
+    included. The empty allow set must deny instead.
+    """
+    manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})
+    agents: list[Any] = []
+
+    def _factory(storage_dir: Path | str | None = None, **kwargs: Any) -> Context:
+        ctx = real_create_harness(storage_dir=storage_dir)
+        turn = MockTurn("ok")
+
+        class _PreloadCustom:
+            inject: ClassVar[list[str]] = ["tools"]
+
+            def __init__(self, c: Context) -> None:
+                c.tools.register(
+                    define_tool(
+                        name="probe_custom",
+                        description="custom",
+                        parameters={},
+                        execute=lambda _a: "ok",
+                    )
+                )
+
+        async def _fake_create(options: Any) -> Any:
+            session = ctx.sessions.create(str(options.get("sessionId", "child")))
+            agent = _MockChildAgent(ctx, session, turn)
+            agents.append(agent)
+            return {"agent": agent, "dispose": lambda: None}
+
+        class _NoAdapterPatch:
+            inject: ClassVar[list[str]] = ["agents"]
+
+            def __init__(self, c: Context) -> None:
+                c.agents.create = _fake_create  # type: ignore[method-assign]
+                c.agents.resume = _fake_create  # type: ignore[method-assign]
+
+        ctx.use(_PreloadCustom)
+        ctx.use(_NoAdapterPatch)
+        return ctx
+
+    with patch(
+        "mth_components.tools.subagent.manager.create_harness", side_effect=_factory
+    ):
+        recs = await manager.invoke(
+            [
+                SubagentSpec(
+                    role="worker",
+                    prompt="Do work",
+                    allowed_tools=frozenset({"absent_tool"}),
+                    wait=True,
+                )
+            ]
+        )
+    assert recs[0].state == SubagentState.COMPLETED
+    assert recs[0].effective_tools == []
+    assert len(agents) == 1
+    agent = agents[0]
+    child_ctx = manager._child_contexts[recs[0].subagent_id]
+    # Nothing is admitted through the child agent's scope, including a tool the
+    # child mounts, and including the base shell when the harness ships it.
+    assert child_ctx.tools.get("probe_custom", scope=agent) is None
+    if child_ctx.tools.get("bash") is not None:
+        assert child_ctx.tools.get("bash", scope=agent) is None
