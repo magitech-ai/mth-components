@@ -24,6 +24,9 @@ from magitech_harness.session.events import ToolCallData
 
 DEFAULT_MODEL = "kilo-auto/free"
 DEFAULT_TIMEOUT_SECONDS = 120.0
+# Kilo's CLI accepts no tool schemas, so its own tools would be invisible to
+# the harness session log. The text-only agent denies every Kilo tool.
+DEFAULT_AGENT = "summary"
 
 
 def wire_model_id(model_id: str) -> str:
@@ -44,20 +47,42 @@ def parse_event_line(line: str) -> dict[str, Any] | None:
 
 
 def _tool_calls_from_part(part: dict[str, Any]) -> list[ToolCallData]:
-    """Extract tool calls from a Kilo tool-use event part."""
-    raw = part.get("toolCalls") or part.get("tool_calls") or []
+    """Extract tool calls from a real Kilo ``tool_use`` event part.
+
+    The CLI emits ``callID``, ``tool``, and ``state.input`` (not the
+    ``toolCalls``/``name``/``arguments`` shape of other providers). Legacy
+    spellings are still accepted so older recordings remain readable.
+    """
+    raw_state = part.get("state")
+    state: dict[str, Any] = raw_state if isinstance(raw_state, dict) else {}
+    raw = (
+        part.get("toolCalls")
+        or part.get("tool_calls")
+        or ([part] if part.get("callID") or part.get("tool") else [])
+    )
     calls: list[ToolCallData] = []
     for item in raw if isinstance(raw, list) else []:
         if not isinstance(item, dict):
             continue
-        arguments = item.get("arguments") or item.get("input") or {}
+        arguments = (
+            item.get("arguments") or item.get("input") or state.get("input") or {}
+        )
         if isinstance(arguments, str):
             try:
                 arguments = json.loads(arguments)
             except json.JSONDecodeError:
                 arguments = {"raw": arguments}
-        name = item.get("name") or item.get("tool") or ""
-        call_id = item.get("id") or item.get("callId") or ""
+        name = item.get("name") or item.get("tool") or part.get("tool") or ""
+        # A real ``tool_use`` part carries both a part ``id`` (prt_...) and a
+        # tool ``callID`` (call-...). The latter is the call identity the
+        # harness pairs with its result, so it takes precedence.
+        call_id = (
+            item.get("callID")
+            or item.get("callId")
+            or part.get("callID")
+            or item.get("id")
+            or ""
+        )
         calls.append(
             ToolCallData(
                 call_id=str(call_id),
@@ -111,11 +136,13 @@ class KiloProvider:
         binary: str = "kilo",
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         env: dict[str, str] | None = None,
+        agent: str = DEFAULT_AGENT,
     ) -> None:
         self.model = model
         self.binary = binary
         self.timeout_seconds = timeout_seconds
         self.env = env
+        self.agent = agent
         self.call_history: list[dict[str, Any]] = []
 
     def list_models(self, provider: str) -> list[dict[str, str]]:
@@ -150,6 +177,8 @@ class KiloProvider:
             "run",
             "--format",
             "json",
+            "--agent",
+            self.agent,
             "--model",
             f"kilo/{wire_model_id(self.model)}",
             "\n\n".join(str(part) for part in prompt_parts),
@@ -172,6 +201,15 @@ class KiloProvider:
             await proc.wait()
             return []
 
+        remove_listener = None
+        if signal is not None:
+
+            def _kill() -> None:
+                if proc.returncode is None:
+                    proc.kill()
+
+            remove_listener = signal.on_abort(_kill)
+
         async def _wait() -> bytes:
             assert proc.stdout is not None
             return await proc.stdout.read()
@@ -184,6 +222,9 @@ class KiloProvider:
             raise KiloProviderError(
                 f"kilo run timed out after {self.timeout_seconds}s"
             ) from None
+        finally:
+            if remove_listener is not None:
+                remove_listener()
         await proc.wait()
         if proc.returncode not in (0, None):  # pragma: no cover - CLI failure
             stderr = b""
@@ -220,19 +261,23 @@ class KiloProvider:
         text_parts: list[str] = []
         tool_calls: list[ToolCallData] = []
         usage = UsageData()
+        finish_reason = "stop"
         for event in events:
             raw_part = event.get("part")
             part: dict[str, Any] = raw_part if isinstance(raw_part, dict) else {}
             if event.get("type") == "text":
                 text_parts.append(_text_from_part(part))
-            if event.get("type") in ("tool-use", "tool_call"):  # pragma: no cover
+            if event.get("type") == "tool_use":
                 tool_calls.extend(_tool_calls_from_part(part))
             if event.get("type") == "step_finish":
                 usage = _usage_from_metrics(part)
+                reason = part.get("reason")
+                if isinstance(reason, str) and reason:
+                    finish_reason = reason
         return ModelResponse(
             text="".join(text_parts),
             tool_calls=tool_calls,
-            finish_reason="tool-calls" if tool_calls else "stop",
+            finish_reason=finish_reason,
             usage=usage,
         )
 
@@ -270,11 +315,18 @@ class KiloProvider:
         yield ModelChunk(
             text="",
             tool_calls=[],
+            finish_reason=None,
+            usage=response.usage,
+        )
+        yield ModelChunk(
+            text="",
+            tool_calls=[],
             finish_reason=response.finish_reason,
         )
 
 
 __all__ = [
+    "DEFAULT_AGENT",
     "DEFAULT_MODEL",
     "DEFAULT_TIMEOUT_SECONDS",
     "KiloAdapter",
@@ -300,9 +352,13 @@ class KiloAdapter:
         binary: str = "kilo",
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         env: dict[str, str] | None = None,
+        agent: str = DEFAULT_AGENT,
     ) -> None:
         self._provider = KiloProvider(
-            binary=binary, timeout_seconds=timeout_seconds, env=env
+            binary=binary,
+            timeout_seconds=timeout_seconds,
+            env=env,
+            agent=agent,
         )
 
     async def list_models(self, provider: str) -> list[dict[str, str]]:
@@ -353,8 +409,24 @@ class KiloAdapter:
                 "name": call.name,
                 "argumentsDelta": arguments,
             }
+            yield {
+                "type": "block-end",
+                "index": index,
+                "block": {
+                    "type": "tool-call",
+                    "id": call.call_id,
+                    "name": call.name,
+                    "arguments": call.arguments,
+                },
+            }
             index += 1
-        reason: dict[str, Any] = (
-            {"kind": "tool-calls"} if response.tool_calls else {"kind": "stop"}
-        )
-        yield {"type": "finish", "reason": reason}
+        usage = response.usage
+        yield {
+            "type": "usage",
+            "usage": {
+                "inputTokens": usage.prompt_tokens,
+                "outputTokens": usage.completion_tokens,
+                "totalTokens": usage.total_tokens,
+            },
+        }
+        yield {"type": "finish", "reason": {"kind": response.finish_reason}}

@@ -18,7 +18,9 @@ Ownership is mechanical ([ADR 0022](../magitech-harness/docs/adr/0022-supersede-
 So this repository holds:
 
 - Providers: `openrouter-provider`, `pollinations-provider` (a Magitech-only
-  keyless provider, labelled as an extension, not parity).
+  keyless provider, labelled as an extension, not parity), and `kilo-provider`
+  (404 models, 12 free variants, zero credentials required; verified live with
+  `cost: 0`).
 - Extra tools: `codeact-tool`, `code-analysis-tools`, `fs-extra-tools`,
   `web-search-tool`, `verify-repo-tool`, `dev-tools`, `subagent-tool`.
 - Marketplace guards: `redaction-guard`, `truncation-guard`,

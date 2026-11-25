@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from mth_components.providers.kilo.component import apply
 from mth_components.providers.kilo.provider import (
+    DEFAULT_AGENT,
     DEFAULT_MODEL,
     KiloAdapter,
     KiloProvider,
@@ -12,6 +13,7 @@ from mth_components.providers.kilo.provider import (
 )
 
 __all__ = [
+    "DEFAULT_AGENT",
     "DEFAULT_MODEL",
     "KiloAdapter",
     "KiloProvider",

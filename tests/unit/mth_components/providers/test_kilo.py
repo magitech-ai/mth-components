@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -51,16 +52,18 @@ def test_default_model_is_keyless_router() -> None:
 def test_command_shape() -> None:
     provider = KiloProvider()
     command = provider._command([{"role": "user", "content": "Hi"}], "Be brief", 42)
-    assert command[:5] == [
+    assert command[:7] == [
         "kilo",
         "run",
         "--format",
         "json",
+        "--agent",
+        "summary",
         "--model",
     ]
-    assert command[5] == "kilo/kilo-auto/free"
-    assert "system: Be brief" in command[6]
-    assert "user: Hi" in command[6]
+    assert command[7] == "kilo/kilo-auto/free"
+    assert "system: Be brief" in command[8]
+    assert "user: Hi" in command[8]
     assert "--max-steps" not in command
 
 
@@ -153,19 +156,21 @@ async def test_generate_parses_kilo_events() -> None:
     assert result.usage.prompt_tokens == 100
     assert result.usage.completion_tokens == 4
     assert spawn.called and provider.call_history
+    assert "--agent" in provider.call_history[0]["command"]
 
 
 @pytest.mark.asyncio
 async def test_generate_includes_tool_calls() -> None:
     output = _json_events(
         {
-            "type": "tool-use",
+            "type": "tool_use",
             "part": {
-                "toolCalls": [
-                    {"id": "c1", "name": "bash", "arguments": '{"command": "echo hi"}'}
-                ]
+                "callID": "c1",
+                "tool": "bash",
+                "state": {"input": {"command": "echo hi"}},
             },
-        }
+        },
+        {"type": "step_finish", "part": {"reason": "tool-calls"}},
     )
     provider = KiloProvider()
     with patch(
@@ -175,6 +180,7 @@ async def test_generate_includes_tool_calls() -> None:
         result = await provider.generate([{"role": "user", "content": "run"}])
     assert result.finish_reason == "tool-calls"
     assert result.tool_calls[0].name == "bash"
+    assert result.tool_calls[0].arguments == {"command": "echo hi"}
 
 
 @pytest.mark.asyncio
@@ -226,10 +232,11 @@ async def test_stream_yields_three_chunks() -> None:
             chunk
             async for chunk in provider.stream([{"role": "user", "content": "ping"}])
         ]
-    assert len(chunks) == 2
+    assert len(chunks) == 3
     assert isinstance(chunks[0], ModelChunk)
     assert chunks[0].text == "hello"
-    assert chunks[1].finish_reason == "stop"
+    assert chunks[1].usage.completion_tokens == 1
+    assert chunks[2].finish_reason == "stop"
 
 
 @pytest.mark.asyncio
@@ -277,10 +284,17 @@ def test_tool_call_part_non_dict_items_are_skipped() -> None:
 async def test_stream_with_tool_calls_yields_three_chunks() -> None:
     output = _json_events(
         {
-            "type": "tool-use",
-            "part": {"toolCalls": [{"id": "c1", "name": "bash", "arguments": {}}]},
+            "type": "tool_use",
+            "part": {
+                "callID": "c1",
+                "tool": "bash",
+                "state": {"input": {}},
+            },
         },
-        {"type": "step_finish", "part": {"tokens": {"output": 2}}},
+        {
+            "type": "step_finish",
+            "part": {"reason": "tool-calls", "tokens": {"output": 2}},
+        },
     )
     provider = KiloProvider()
     with patch(
@@ -291,9 +305,10 @@ async def test_stream_with_tool_calls_yields_three_chunks() -> None:
             chunk
             async for chunk in provider.stream([{"role": "user", "content": "run"}])
         ]
-    assert len(chunks) == 2
+    assert len(chunks) == 3
     assert chunks[0].tool_calls[0].name == "bash"
-    assert chunks[1].finish_reason == "tool-calls"
+    assert chunks[1].usage.completion_tokens == 2
+    assert chunks[2].finish_reason == "tool-calls"
 
 
 @pytest.mark.asyncio
@@ -318,22 +333,27 @@ async def test_adapter_lists_and_streams_text() -> None:
     assert chunks[1]["type"] == "text-delta"
     assert chunks[1]["text"] == "hello"
     assert chunks[2]["type"] == "block-end"
-    assert chunks[-1]["type"] == "finish"
-    assert chunks[-1]["reason"] == {"kind": "stop"}
+    assert chunks[3]["type"] == "usage"
+    assert chunks[3]["usage"]["outputTokens"] == 1
+    assert chunks[4]["type"] == "finish"
+    assert chunks[4]["reason"] == {"kind": "stop"}
 
 
 @pytest.mark.asyncio
 async def test_adapter_streams_tool_calls() -> None:
     output = _json_events(
         {
-            "type": "tool-use",
+            "type": "tool_use",
             "part": {
-                "toolCalls": [
-                    {"id": "c1", "name": "read_file", "arguments": {"path": "x"}}
-                ]
+                "callID": "c1",
+                "tool": "read_file",
+                "state": {"input": {"path": "x"}},
             },
         },
-        {"type": "step_finish", "part": {"tokens": {"output": 2}}},
+        {
+            "type": "step_finish",
+            "part": {"reason": "tool-calls", "tokens": {"output": 2}},
+        },
     )
     adapter = KiloAdapter()
     with patch(
@@ -351,4 +371,66 @@ async def test_adapter_streams_tool_calls() -> None:
     assert chunks[1]["type"] == "tool-call-delta"
     assert chunks[1]["name"] == "read_file"
     assert json.loads(chunks[1]["argumentsDelta"]) == {"path": "x"}
-    assert chunks[-1]["reason"] == {"kind": "tool-calls"}
+    assert chunks[2]["type"] == "block-end"
+    assert chunks[3]["type"] == "usage"
+    assert chunks[4]["reason"] == {"kind": "tool-calls"}
+
+
+@pytest.mark.asyncio
+async def test_generate_midflight_abort_kills_process() -> None:
+    """An abort after dispatch kills the child process through the signal."""
+    signal = AbortSignal()
+    process = _FakeProcess(_json_events({"type": "text", "part": {"text": "x"}}))
+    process.returncode = None
+    provider = KiloProvider()
+    killed: list[bool] = []
+
+    def _on_abort(callback: Any) -> Any:
+        killed.append(False)
+        callback()  # simulate an abort arriving while the subprocess runs
+        return lambda: None
+
+    signal.on_abort = _on_abort  # type: ignore[method-assign]
+    with patch(
+        "mth_components.providers.kilo.provider.asyncio.create_subprocess_exec",
+        return_value=process,
+    ):
+        await provider.generate([{"role": "user", "content": "ping"}], signal=signal)
+    assert killed == [False]
+
+
+@pytest.mark.asyncio
+async def test_midflight_abort_skips_kill_for_settled_process() -> None:
+    """A callback fired after the process settled does not kill it again."""
+    signal = AbortSignal()
+    process = _FakeProcess(_json_events({"type": "text", "part": {"text": "x"}}))
+    provider = KiloProvider()
+
+    def _on_abort(callback: Any) -> Any:
+        process.returncode = 0
+        callback()
+        return lambda: None
+
+    signal.on_abort = _on_abort  # type: ignore[method-assign]
+    with patch(
+        "mth_components.providers.kilo.provider.asyncio.create_subprocess_exec",
+        return_value=process,
+    ):
+        await provider.generate([{"role": "user", "content": "ping"}], signal=signal)
+    assert process.returncode == 0
+
+
+@pytest.mark.asyncio
+async def test_real_captured_tool_use_event_is_parsed() -> None:
+    """Regression: replay the CLI's actual ``tool_use`` vocabulary."""
+    fixture = Path(__file__).resolve().parents[3] / "fixtures" / "kilo-tool.jsonl"
+    lines = fixture.read_text(encoding="utf-8").splitlines()
+    events = [event for line in lines if (event := parse_event_line(line)) is not None]
+    calls: list[Any] = []
+    for event in events:
+        if event.get("type") == "tool_use":
+            calls.extend(_tool_calls_from_part(event.get("part") or {}))
+    assert calls
+    assert calls[0].name == "read"
+    assert calls[0].call_id.startswith("call-")
+    assert "filePath" in calls[0].arguments
