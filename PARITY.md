@@ -27,13 +27,12 @@ So this repository holds:
   OKF (registry/filesystem/loader), steering, workspace snapshot.
 - Sandboxes and sessions: `sandbox-ladder`, `session-search`.
 
-## Known transition
+## Relocated
 
 Six base-bundle tools — `bash`, `read_file`, `write_file`, `edit_file`, `glob`,
-`grep` — are implemented and probed here but are owned by `magitech-harness`
-under ADR 0022. They are recorded PARTIAL in the authoritative map until the
-relocation (implementation + tests + catalog entry + `base.yaml` row) lands.
-This is a recorded gap, not an accepted one.
+`grep` — moved to `magitech-harness` under ADR 0022, together with their tests
+and `base.yaml` rows (`tool-bash`, `tool-fs`, `tool-fs-search`). They are DONE
+in the authoritative map. This repository no longer ships or catalogues them.
 
 ## Historical pins
 

@@ -16,6 +16,7 @@ from magitech_harness import check_bundle_entries, create_harness
 from magitech_harness.agent.cancellation import AbortSignal
 from magitech_harness.cli import summarize_headless_outcome
 from magitech_harness.llm.message import create_user_message
+from magitech_harness.scope import create_scope
 from magitech_harness.tools.service import ToolService
 
 from mth_components.tools.subagent.types import (
@@ -64,6 +65,8 @@ class SubagentManager(Service):
         self._signals: dict[str, AbortSignal] = {}
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._worktrees: dict[str, Path] = {}
+        self._allowed_tools: dict[str, frozenset[str]] = {}
+        self._child_scopes: dict[str, Any] = {}
         self._child_agents: dict[str, Any] = {}
 
     def list_records(self) -> list[SubagentRecord]:
@@ -134,6 +137,9 @@ class SubagentManager(Service):
                 effective_tools=effective_tools,
             )
 
+            allowed_set = self._allowed_tools_for(spec)
+            if allowed_set is not None:
+                self._allowed_tools[subagent_id] = allowed_set
             self._records[subagent_id] = record
             self._child_contexts[subagent_id] = child_ctx
             records.append(record)
@@ -169,19 +175,22 @@ class SubagentManager(Service):
         if active_name is not None:
             child_llm.set_active_provider(active_name)
 
+    @staticmethod
+    def _allowed_tools_for(spec: SubagentSpec) -> frozenset[str] | None:
+        """Resolve the child's allowed tool set from the spec and role preset."""
+        if spec.allowed_tools is not None:
+            return spec.allowed_tools
+        if "research" in spec.role.lower():
+            return RESEARCH_PRESET_TOOLS
+        return None
+
     def _populate_child_tools(
         self,
         child_tools: ToolService,
         spec: SubagentSpec,
     ) -> list[str]:
-        """Populates child tool service filtered by allowed specifications."""
-        allowed: frozenset[str] | None
-        if spec.allowed_tools is not None:
-            allowed = spec.allowed_tools
-        elif "research" in spec.role.lower():
-            allowed = RESEARCH_PRESET_TOOLS
-        else:
-            allowed = None
+        """Copies parent tools the child does not already mount."""
+        allowed = self._allowed_tools_for(spec)
 
         effective: list[str] = []
         parent_tools = getattr(self.ctx, "tools", None)
@@ -190,10 +199,50 @@ class SubagentManager(Service):
                 name = tool["name"]
                 if name in SUBAGENT_TRIAD_TOOLS:
                     continue
-                if allowed is None or name in allowed:
+                if allowed is not None and name not in allowed:
+                    continue
+                # The child bundle mounts the base tool set itself; copying a
+                # parent tool of the same name would double-register it.
+                if child_tools.get(name) is None:
                     child_tools.register(tool)
-                    effective.append(name)
+                effective.append(name)
         return effective
+
+    @staticmethod
+    def _pin_fail_closed_approval(child_ctx: Context, agent: Any) -> None:
+        """Pin the child to a fail-closed approval scope (source=delegation).
+
+        A child never inherits the parent's interactive approver or one-shot
+        grants.
+        """
+        approval = getattr(child_ctx, "approval", None)
+        if approval is not None:  # pragma: no branch
+            try:
+                approval.set_policy(agent, "never")
+            except (ValueError, TypeError):  # pragma: no cover
+                # defensive: a stub approval service may reject policies
+                pass
+
+    def _restrict_child_tools(
+        self, child_ctx: Context, agent: Any, subagent_id: str
+    ) -> None:
+        """Restrict the child's own scope to its allowed tool set.
+
+        The child bundle mounts the base tools itself, so the restriction is the
+        only thing that makes ``allowed_tools`` an enforcement rather than a
+        report. A preset may name tools this composition does not mount; an
+        absent name is not a reason to fail the child.
+        """
+        allowed = self._allowed_tools.get(subagent_id)
+        if allowed is None:
+            return
+        available = {definition["name"] for definition in child_ctx.tools.definitions()}
+        allow = sorted(allowed & available)
+        if not allow:
+            return
+        child_scope = create_scope(child_ctx, agent)
+        child_scope.ctx.tools.restrict({"allow": allow})
+        self._child_scopes[subagent_id] = child_scope
 
     async def _resolve_workspace(
         self,
@@ -269,16 +318,8 @@ class SubagentManager(Service):
                     options["signal"] = signal
                 handle = await child_ctx.agents.create(options)
                 agent = handle["agent"]
-                # Pin the child to a fail-closed approval scope (reference:
-                # approval/policy source=delegation). A child never inherits
-                # the parent's interactive approver or one-shot grants.
-                approval = getattr(child_ctx, "approval", None)
-                if approval is not None:  # pragma: no branch
-                    try:
-                        approval.set_policy(agent, "never")
-                    except (ValueError, TypeError):  # pragma: no cover
-                        # defensive: a stub approval service may reject policies
-                        pass
+                self._pin_fail_closed_approval(child_ctx, agent)
+                self._restrict_child_tools(child_ctx, agent, subagent_id)
                 self._child_agents[subagent_id] = agent
                 session = agent.session
                 record.session_id = session.id

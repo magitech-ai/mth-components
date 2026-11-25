@@ -495,10 +495,11 @@ async def test_child_ctx_bundle_built_copies_providers_and_persists(
     assert set(child_ctx.llm.providers) == {"mock", "alt"}
     assert child_ctx.llm.active_provider is alt_provider
 
-    # Tools filtered through the public seams: allowed tool present,
-    # unlisted and triad tools absent.
+    # The bundle mounts the base tool set; the allowed set filters copied
+    # parent tools and restricts the child's own scope, and the delegation
+    # triad never reaches a child.
     assert child_ctx.tools.get("read_file") is not None
-    assert child_ctx.tools.get("write_file") is None
+    assert "write_file" not in rec.effective_tools
     assert child_ctx.tools.get("invoke_subagent") is None
 
     # The bundle-built child carries rows the old child never had.
@@ -613,3 +614,46 @@ async def test_child_agent_with_model_slug(parent_ctx: Context, tmp_path: Path) 
             ]
         )
     assert recs[0].state == SubagentState.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_allowed_set_with_no_mounted_names_skips_restriction(
+    parent_ctx: Context, tmp_path: Path
+) -> None:
+    """An allowed set naming nothing mounted leaves the child unrestricted."""
+    manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})
+
+    def _factory(storage_dir: Path | str | None = None, **kwargs: Any) -> Context:
+        ctx = real_create_harness(storage_dir=storage_dir)
+        turn = MockTurn("ok")
+
+        async def _fake_create(options: Any) -> Any:
+            session = ctx.sessions.create(str(options.get("sessionId", "child")))
+            agent = _MockChildAgent(ctx, session, turn)
+            return {"agent": agent, "dispose": lambda: None}
+
+        class _NoAdapterPatch:
+            inject: ClassVar[list[str]] = ["agents"]
+
+            def __init__(self, c: Context) -> None:
+                c.agents.create = _fake_create  # type: ignore[method-assign]
+                c.agents.resume = _fake_create  # type: ignore[method-assign]
+
+        ctx.use(_NoAdapterPatch)
+        return ctx
+
+    with patch(
+        "mth_components.tools.subagent.manager.create_harness", side_effect=_factory
+    ):
+        recs = await manager.invoke(
+            [
+                SubagentSpec(
+                    role="worker",
+                    prompt="Do work",
+                    allowed_tools=frozenset({"absent_tool"}),
+                    wait=True,
+                )
+            ]
+        )
+    assert recs[0].state == SubagentState.COMPLETED
+    assert recs[0].effective_tools == []
