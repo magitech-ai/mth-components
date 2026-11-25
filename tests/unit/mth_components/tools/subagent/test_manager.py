@@ -465,6 +465,16 @@ async def test_child_ctx_bundle_built_copies_providers_and_persists(
     parent_ctx.llm.register_provider("mock", mock_provider)
     parent_ctx.llm.register_provider("alt", alt_provider)
     parent_ctx.llm.set_active_provider("alt")
+    # A custom parent tool must be copied where the child bundle does not
+    # already mount that name; this covers both the copy and the skip.
+    parent_ctx.tools.register(
+        define_tool(
+            name="probe_custom",
+            description="custom",
+            parameters={},
+            execute=lambda _a: "ok",
+        )
+    )
 
     manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})
     captured: list[Context] = []
@@ -477,7 +487,7 @@ async def test_child_ctx_bundle_built_copies_providers_and_persists(
                 SubagentSpec(
                     role="worker",
                     prompt="Do work",
-                    allowed_tools=frozenset({"read_file"}),
+                    allowed_tools=frozenset({"read_file", "probe_custom"}),
                     wait=True,
                 )
             ]
@@ -486,7 +496,7 @@ async def test_child_ctx_bundle_built_copies_providers_and_persists(
     rec = recs[0]
     assert rec.state == SubagentState.COMPLETED
     assert rec.summary == "Turn result"
-    assert rec.effective_tools == ["read_file"]
+    assert rec.effective_tools == ["read_file", "probe_custom"]
 
     assert len(captured) == 1
     child_ctx = captured[0]
