@@ -4,7 +4,9 @@
 
 - **Repository Role & Marketplace Structure**:
   - `mth-components` is the official extensible component marketplace for `magitech-harness`.
-  - Implements pluggable model providers (`openrouter-provider`, `pollinations-provider`), domain tools (`bash-tool`, `codeact-tool`, `read-file-tool`, `write-file-tool`, `edit-file-tool`), and guardrails (`truncation-guard`, `compaction-guard`).
+  - Owns **optional, on-demand, and third-party** capabilities only. Anything mounted by the reference's `packages/bundle/base/cordis.patch.yml` belongs to `magitech-harness` (ADR 0022), not here.
+  - Implements pluggable model providers (`openrouter-provider`, `pollinations-provider`), extra tools (`codeact-tool`, `code-analysis-tools`, `fs-extra-tools`, `web-search-tool`, `verify-repo-tool`, `dev-tools`, `subagent-tool`), and marketplace guardrails (`redaction-guard`, `truncation-guard`, `workspace-trust-gate`).
+  - Transition: `bash-tool`, `read-file-tool`, `write-file-tool`, `edit-file-tool`, and `fs-search-tool` are owned by the harness under ADR 0022 and are recorded PARTIAL in `PARITY.md` until relocated.
   - Every component ships with a `manifest.json` describing its metadata, type, and entrypoints, registered in `index.json`.
 - **Component Integration**: Components mount into `animas` context through an `apply(ctx)` entry point and register capabilities on explicit services such as `ctx.llm` and `ctx.tools`. Tool definitions on `ctx.tools` use the canonical `magitech_harness.tools.schema.define_tool`; the legacy `Tool`/`tools.definition` module no longer exists.
 - **Component discovery** — catalog: `src/mth_components/index.py`; Agent Skills activation: `bridges/skills_registry`, `bridges/skills_filesystem`, `bridges/skills_loader`; OKF knowledge activation: `bridges/okf_registry`, `bridges/okf_filesystem`, `bridges/okf_loader`; safeguards: `docs/adr/0012-0014`.
