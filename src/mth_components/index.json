@@ -19,6 +19,16 @@
         "Provider"
       ],
       "enabled": true
+    },
+    "kilo-provider": {
+      "version": "0.1.0",
+      "description": "Keyless Kilo Code CLI model provider (404 models, free variants) for Magitech Harness",
+      "path": "providers/kilo",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Provider"
+      ],
+      "enabled": true
     }
   },
   "tools": {

@@ -7,7 +7,6 @@ from typing import Any, cast
 
 from animas import Context
 from animas.events import EventMode
-from magitech_harness.session.events import EventType
 
 from mth_components.guards.compaction.compaction import (
     compact_session,
@@ -19,7 +18,6 @@ from mth_components.guards.compaction.config import (
     resolve_compact_spec,
     resolve_target_policy,
 )
-from mth_components.guards.compaction.pruner import prune_content
 
 
 async def _resolve_spec(
@@ -126,49 +124,10 @@ def apply(ctx: Context, config: dict | None = None, **kwargs: Any) -> None:
         pre_step_res = await next_fn(payload)
         return cast(dict[str, Any], pre_step_res)
 
-    # Register the tool-result pruner on the compaction service so oversized
-    # results can be collapsed with the reference byte-exact marker.
-    if ctx.has("compaction"):
-        ctx.compaction.register_pruner(
-            "tool-result", lambda session, **kw: _prune_session(session)
-        )
-
-        def _prune_session(session: Any) -> dict[str, Any]:
-            """Append a shadow-price event + a surface replace per pruned result.
-
-            The reference never mutates an already-committed event: it writes a
-            new tool/result with a replace op over the same seq. Mutating a
-            detached payload copy would be a no-op on the durable log.
-            """
-            pruned = 0
-            surface_nodes = list(getattr(session, "surface_nodes", lambda: [])())
-            for seq in surface_nodes:
-                event = session.events[seq] if seq < len(session.events) else None
-                if event is None or event.type != EventType.TOOL_RESULT:
-                    continue
-                payload = dict(event.payload or {})
-                message = dict(payload.get("message") or {})
-                blocks = prune_content(message.get("content"))
-                if blocks is None:
-                    continue
-                ctx.sessions.log_event(
-                    session,
-                    EventType.COMPACTION_PRUNE,
-                    {
-                        "shadowedRange": {"start": seq, "end": seq},
-                        "shadowedSeqs": [seq],
-                        "shadowedTokenCount": estimate_history_tokens([event]),
-                    },
-                )
-                ctx.sessions.log_event(
-                    session,
-                    EventType.TOOL_RESULT,
-                    {**payload, "message": {**message, "content": blocks}},
-                    surface_op={"op": "replace", "startSeq": seq, "endSeq": seq},
-                    source_event_seqs=[seq],
-                )
-                pruned += 1
-            return {"pruned": pruned > 0, "count": pruned}
+    # The tool-result pruner is a base-bundle row in magitech-harness and is
+    # already registered on ``ctx.compaction`` by that bundle. Registering it
+    # here as well would raise "pruner already registered"; this guard owns only
+    # the conversation-level compaction policy below.
 
     ctx.on("session/compact", _on_session_compact, mode=EventMode.WATERFALL)
     ctx.on("agent/pre-step", _on_pre_step, mode=EventMode.WATERFALL)

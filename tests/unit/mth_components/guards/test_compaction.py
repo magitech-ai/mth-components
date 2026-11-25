@@ -616,7 +616,7 @@ def test_pruner_without_intersecting_text_block() -> None:
 
 
 @pytest.mark.asyncio
-async def test_component_registers_pruner_and_prunes_session() -> None:
+async def test_component_defers_result_pruning_to_harness() -> None:
 
     ctx = Context()
     ctx.use(SessionProjectionRegistry)
@@ -624,64 +624,11 @@ async def test_component_registers_pruner_and_prunes_session() -> None:
     ctx.use(CompactionService)
     await ctx.flush()
     compaction_apply(ctx)
-    assert "tool-result" in ctx.compaction.list_pruners()
 
-    # Exercise the registered pruner on a real Session with an oversized
-    # surface tool/result. The fix appends a compaction/prune + replace event
-    # rather than mutating a detached payload copy.
-    session = ctx.sessions.create("pruner-session")
-    ctx.sessions.log_event(session, "turn/start", {"turn": 1})
-    ctx.sessions.log_event(session, "step/start", {"turn": 1, "step": 1})
-    # A non-tool surface node and a small (unprunable) tool result exercise the
-    # pruner's skip branches.
-    ctx.sessions.log_event(
-        session,
-        "user/message",
-        {"content": [{"type": "text", "text": "hi"}], "source": {"kind": "user"}},
-        surface_op="append",
-    )
-    ctx.sessions.log_event(
-        session,
-        "tool/result",
-        {
-            "turn": 1,
-            "step": 1,
-            "message": create_tool_result_message(
-                call_id="small",
-                content=[{"type": "text", "text": "tiny"}],
-            ),
-        },
-        surface_op="append",
-    )
-    ctx.sessions.log_event(
-        session,
-        "tool/result",
-        {
-            "turn": 1,
-            "step": 1,
-            "message": create_tool_result_message(
-                call_id="c1",
-                content=[{"type": "text", "text": "Q" * 9000}],
-            ),
-        },
-        surface_op="append",
-    )
-    pruner = ctx.compaction._pruners["tool-result"]
-    out = pruner(session)
-    assert out["pruned"] is True and out["count"] == 1
-    assert any(e.type == EventType.COMPACTION_PRUNE for e in session.events)
-    replacements = [
-        e
-        for e in session.events
-        if e.type == EventType.TOOL_RESULT
-        and isinstance(e.surface_op, dict)
-        and e.surface_op.get("op") == "replace"
-    ]
-    assert len(replacements) == 1
-    assert replacements[0].source_event_seqs is not None
-    assert "[... tool result middle pruned ...]" in json.dumps(
-        replacements[0].payload.get("message", {})
-    )
+    # The tool-result pruner is a base-bundle row in magitech-harness; the
+    # marketplace guard owns only the conversation-level compaction policy and
+    # must not register a second pruner under the same name.
+    assert "tool-result" not in ctx.compaction.list_pruners()
 
 
 @pytest.mark.asyncio
