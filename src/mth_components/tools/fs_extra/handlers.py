@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from magitech_harness.tools.path_guard import PathEscapeError, confined_path
+from mth_components.tools.fs.path_guard import PathEscapeError, confined_path
 
 
 def _resolve(workspace_root: Path | str | None, path: str) -> str | Path:
