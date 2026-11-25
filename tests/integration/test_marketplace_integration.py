@@ -84,7 +84,8 @@ async def test_end_to_end_marketplace_turn(tmp_path: Path) -> None:
     assert "pollinations-provider" in artifact_map
     assert "fs-extra-tools" in artifact_map
     assert "code-analysis-tools" in artifact_map
-    assert "subagent-tool" in artifact_map
+    assert "dev-tools" in artifact_map
+    assert "subagent-tool" not in artifact_map
     assert "truncation-guard" in artifact_map
     assert "compaction-guard" in artifact_map
 

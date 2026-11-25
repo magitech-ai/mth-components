@@ -229,4 +229,4 @@ def test_scan_default_root_is_package_root() -> None:
     artifacts = scan_components(PACKAGE_ROOT)
     names = {a.name for a in artifacts}
     assert "dev-tools" in names
-    assert "subagent-tool" in names
+    assert "subagent-tool" not in names

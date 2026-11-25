@@ -108,8 +108,10 @@ _Avoid_: Child agent, slave agent, worker
 A durable, append-only session log recorded under `subsessions/` dedicated to a sub-agent's execution history.
 _Avoid_: Child thread, sub-log, child session
 
-**Sub-Agent Triad**:
-The three standardized marketplace tools (`invoke_subagent`, `send_message`, `manage_subagents`) for conversational sub-agent delegation.
+**Sub-Agent Triad** (historical):
+The former marketplace tools `invoke_subagent`, `send_message`, and
+`manage_subagents`. The dsh-named surface now lives in `magitech-harness` under
+ADR 0022; the dsh-named surface is now the only one (ADR 0024); the old names were retired.
 _Avoid_: Child toolset, delegation api
 
 ### Interception & Transformations
