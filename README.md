@@ -4,8 +4,11 @@ Official portable components and marketplace catalog for [Magitech Harness](http
 
 ## Overview
 
-`mth-components` contains model providers, domain tools, guards, bridges and
-session services adhering to the **Everything is a Component** architecture.
+`mth-components` contains the **optional, on-demand, and third-party** model
+providers, tools, guards, bridges, and session services that round out the
+runtime. Everything mounted by the reference's base bundle — `bash`, the
+filesystem tools, `glob`/`grep`, jobs, todo, and goals — ships in
+`magitech-harness` instead ([ADR 0022](../magitech-harness/docs/adr/0022-supersede-zero-builtin-domain-tools-base-bundle-in-harness.md)).
 Each component ships a `manifest.json` and is registered in the marketplace
 catalog (`src/mth_components/index.json`). Components mount into an `animas`
 context through `apply(ctx)` and register capabilities on explicit services
@@ -23,8 +26,8 @@ such as `ctx.llm` and `ctx.tools`.
 | Sessions   | `session-search` | `src/mth_components/sessions/` |
 
 (*) Pollinations is a magitech-only keyless provider. The Agent Skills and OKF
-bridges are post-1.0 additions. Neither group is part of the 1.0 parity scope;
-see [PARITY.md](PARITY.md).
+bridges are Magitech extensions. None of them is parity; see
+[PARITY.md](PARITY.md) for the ownership rule and the current transition state.
 
 ## Discovery and installation
 
