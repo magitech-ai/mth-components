@@ -1,0 +1,8 @@
+{
+  "name": "upstream-skills",
+  "version": "0.1.0",
+  "description": "Verified pinned downloads of upstream vendor skill guides",
+  "entry_point": "component.py:apply",
+  "types": ["Connector"],
+  "enabled": true
+}
