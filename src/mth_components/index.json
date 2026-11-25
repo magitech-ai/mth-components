@@ -305,5 +305,17 @@
       ],
       "enabled": true
     }
+  },
+  "connectors": {
+    "upstream-skills": {
+      "version": "0.1.0",
+      "description": "Verified pinned downloads of upstream vendor skill guides",
+      "path": "upstream_skills",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Connector"
+      ],
+      "enabled": true
+    }
   }
 }
