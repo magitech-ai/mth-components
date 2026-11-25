@@ -22,7 +22,7 @@ So this repository holds:
   (404 models, 12 free variants, zero credentials required; verified live with
   `cost: 0`).
 - Extra tools: `codeact-tool`, `code-analysis-tools`, `fs-extra-tools`,
-  `web-search-tool`, `verify-repo-tool`, `dev-tools`, `subagent-tool`.
+  `web-search-tool`, `verify-repo-tool`, `dev-tools`.
 - Marketplace guards: `redaction-guard`, `truncation-guard`,
   `workspace-trust-gate`, plus the historical duplicate guard rows.
 - Bridges: LSP, MCP, OpenTelemetry, Agent Skills (registry/filesystem/loader),
@@ -31,10 +31,12 @@ So this repository holds:
 
 ## Relocated
 
-Six base-bundle tools — `bash`, `read_file`, `write_file`, `edit_file`, `glob`,
-`grep` — moved to `magitech-harness` under ADR 0022, together with their tests
-and `base.yaml` rows (`tool-bash`, `tool-fs`, `tool-fs-search`). They are DONE
-in the authoritative map. This repository no longer ships or catalogues them.
+Base-bundle capabilities moved to `magitech-harness` under ADR 0022, with their
+tests and `base.yaml` rows: `bash`, `read_file`, `write_file`, `edit_file`,
+`glob`, `grep` (`tool-bash`, `tool-fs`, `tool-fs-search`), and the subagent
+domain plus its six tools (`subagent`, `subagent_fork`, `send_message`,
+`list_agents`, `interrupt_agent`, `wait_agent`). They are DONE in the
+authoritative map. This repository no longer ships or catalogues them.
 
 ## Historical pins
 
