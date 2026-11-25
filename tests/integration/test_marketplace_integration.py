@@ -189,6 +189,7 @@ async def test_end_to_end_marketplace_streaming_and_compaction(
     # Register a deterministic offline adapter for the unified driver;
     # the OpenRouter SSE wire protocol is covered by its own unit tests.
     ctx.llm.register_adapter(["openrouter"], MockLlmAdapter())
+    ctx.llm.register_adapter(["kilo"], MockLlmAdapter())
     await ctx.flush()
 
     frames, session = await _stream_agent_turn(
