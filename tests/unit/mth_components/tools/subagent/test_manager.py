@@ -478,9 +478,34 @@ async def test_child_ctx_bundle_built_copies_providers_and_persists(
 
     manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})
     captured: list[Context] = []
+    base_factory = _bundle_child_factory(captured=captured)
+
+    def _factory_with_preloaded(
+        storage_dir: Path | str | None = None, **kwargs: Any
+    ) -> Context:
+        # Pre-load one parent-named tool so the copy loop also covers the
+        # "child already mounts this name" path on every harness release.
+        ctx = base_factory(storage_dir=storage_dir, **kwargs)
+
+        class _PreloadCustom:
+            inject: ClassVar[list[str]] = ["tools"]
+
+            def __init__(self, c: Context) -> None:
+                c.tools.register(
+                    define_tool(
+                        name="probe_custom",
+                        description="custom",
+                        parameters={},
+                        execute=lambda _a: "ok",
+                    )
+                )
+
+        ctx.use(_PreloadCustom)
+        return ctx
+
     with patch(
         "mth_components.tools.subagent.manager.create_harness",
-        side_effect=_bundle_child_factory(captured=captured),
+        side_effect=_factory_with_preloaded,
     ):
         recs = await manager.invoke(
             [
