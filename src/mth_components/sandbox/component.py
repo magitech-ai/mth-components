@@ -1,0 +1,26 @@
+"""Animas component entry point for sandbox-ladder."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from animas import Context
+
+from mth_components.sandbox.ladder import PrivilegeLevel, SandboxService
+
+
+def apply(
+    ctx: Context,
+    max_level: str = "strict",
+    enforce: bool = True,
+    bwrap_path: str | None = None,
+    **kwargs: Any,
+) -> None:
+    """Animas component registering the SandboxService onto the context."""
+    level = PrivilegeLevel(max_level.lower())
+    ctx.use(
+        SandboxService,
+        max_level=level,
+        enforce=enforce,
+        bwrap_path=bwrap_path,
+    )

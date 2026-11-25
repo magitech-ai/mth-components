@@ -5,7 +5,7 @@ The authoritative 1.0 parity map lives in the harness repo:
 re-audit deliverable that proves acceptance criterion 1 (every in-scope item
 DONE or PARTIAL-with-accepted-gap, nothing MISSING in-scope).
 
-mth-plugins-specific pins at the 1.0 gate:
+mth-components-specific pins at the 1.0 gate:
 
 - Version `0.3.0`, audited at the C6-fix merge on `main`.
 - Suite: 402 tests, 100% statement + branch coverage; CI green on all 6 legs.

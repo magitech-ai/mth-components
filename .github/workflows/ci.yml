@@ -15,8 +15,8 @@ jobs:
     uses: magitech-ai/.github/.github/workflows/python-ci.yml@main
     with:
       python-version: "3.12"
-      checkout-path: "mth-plugins"
-      working-directory: "mth-plugins"
+      checkout-path: "mth-components"
+      working-directory: "mth-components"
       pre-commands: |
         git clone --depth 1 https://github.com/magitech-ai/animas.git animas
         git clone --depth 1 https://github.com/magitech-ai/magitech-harness.git magitech-harness

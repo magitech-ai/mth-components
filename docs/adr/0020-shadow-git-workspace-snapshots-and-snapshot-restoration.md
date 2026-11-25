@@ -13,7 +13,7 @@ Autonomous agents executing multiple editing turns or tool commands may produce 
 
 ## Decision
 
-We implement `workspace-snapshot` in `mth-plugins`:
+We implement `workspace-snapshot` in `mth-components`:
 1. **Shadow Bare Git Repository**:
    - Manages a bare Git repository per workspace under `~/.agents/snapshots/<repo-hash>`.
    - Links Git object storage via `objects/info/alternates` to the workspace's `.git/objects` when available, enabling near-instantaneous snapshots with zero disk duplication for committed assets.

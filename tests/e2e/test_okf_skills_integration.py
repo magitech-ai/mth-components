@@ -11,13 +11,13 @@ from magitech_harness.system_prompt.service import SystemPromptService
 from magitech_harness.tools.native_executor import apply as apply_native_executor
 from magitech_harness.tools.service import ToolService
 
-from mth_plugins.bridges.okf_loader.service import OKFSessionCatalogService
-from mth_plugins.bridges.okf_registry.service import (
+from mth_components.bridges.okf_loader.service import OKFSessionCatalogService
+from mth_components.bridges.okf_registry.service import (
     OKFBundleInfo,
     OKFProviderRegistryService,
 )
-from mth_plugins.bridges.skills_loader.service import SkillsSessionCatalogService
-from mth_plugins.bridges.skills_registry.service import (
+from mth_components.bridges.skills_loader.service import SkillsSessionCatalogService
+from mth_components.bridges.skills_registry.service import (
     SkillBundleInfo,
     SkillsProviderRegistryService,
 )
@@ -36,7 +36,7 @@ async def test_e2e_okf_and_skills_consumption():
 
     # Register OKF bundles from the repo-local fixture so the test is
     # self-contained and needs no sibling agents-home checkout in CI.
-    # tests/e2e/test.py -> tests/e2e -> tests -> mth-plugins (repo root)
+    # tests/e2e/test.py -> tests/e2e -> tests -> mth-components (repo root)
     fixtures = Path(__file__).resolve().parents[1] / "fixtures"
     okf_coding_path = fixtures / "okf_test_bundle"
     okf_engineering_path = fixtures / "okf_test_bundle"
