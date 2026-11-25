@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from magitech_harness.tools.fs import handle_read_file, handle_write_file
+
 from mth_components.tools.fs.path_guard import PathEscapeError, confined_path
 
 
