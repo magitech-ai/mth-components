@@ -652,19 +652,39 @@ async def test_child_agent_with_model_slug(parent_ctx: Context, tmp_path: Path) 
 
 
 @pytest.mark.asyncio
-async def test_allowed_set_with_no_mounted_names_skips_restriction(
+async def test_allowed_set_with_no_mounted_names_denies_essentially_everything(
     parent_ctx: Context, tmp_path: Path
 ) -> None:
-    """An allowed set naming nothing mounted leaves the child unrestricted."""
+    """An unsatisfiable allowed set fails closed, not open.
+
+    The child bundle mounts base tools, so skipping the restriction when the
+    intersection is empty would hand the child every bundle tool, shell
+    included. The empty allow set must deny instead.
+    """
     manager = SubagentManager(parent_ctx, {"subsessions_dir": tmp_path / "subsessions"})
+    agents: list[Any] = []
 
     def _factory(storage_dir: Path | str | None = None, **kwargs: Any) -> Context:
         ctx = real_create_harness(storage_dir=storage_dir)
         turn = MockTurn("ok")
 
+        class _PreloadCustom:
+            inject: ClassVar[list[str]] = ["tools"]
+
+            def __init__(self, c: Context) -> None:
+                c.tools.register(
+                    define_tool(
+                        name="probe_custom",
+                        description="custom",
+                        parameters={},
+                        execute=lambda _a: "ok",
+                    )
+                )
+
         async def _fake_create(options: Any) -> Any:
             session = ctx.sessions.create(str(options.get("sessionId", "child")))
             agent = _MockChildAgent(ctx, session, turn)
+            agents.append(agent)
             return {"agent": agent, "dispose": lambda: None}
 
         class _NoAdapterPatch:
@@ -674,6 +694,7 @@ async def test_allowed_set_with_no_mounted_names_skips_restriction(
                 c.agents.create = _fake_create  # type: ignore[method-assign]
                 c.agents.resume = _fake_create  # type: ignore[method-assign]
 
+        ctx.use(_PreloadCustom)
         ctx.use(_NoAdapterPatch)
         return ctx
 
@@ -692,3 +713,11 @@ async def test_allowed_set_with_no_mounted_names_skips_restriction(
         )
     assert recs[0].state == SubagentState.COMPLETED
     assert recs[0].effective_tools == []
+    assert len(agents) == 1
+    agent = agents[0]
+    child_ctx = manager._child_contexts[recs[0].subagent_id]
+    # Nothing is admitted through the child agent's scope, including a tool the
+    # child mounts, and including the base shell when the harness ships it.
+    assert child_ctx.tools.get("probe_custom", scope=agent) is None
+    if child_ctx.tools.get("bash") is not None:
+        assert child_ctx.tools.get("bash", scope=agent) is None

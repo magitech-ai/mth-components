@@ -230,18 +230,22 @@ class SubagentManager(Service):
 
         The child bundle mounts the base tools itself, so the restriction is the
         only thing that makes ``allowed_tools`` an enforcement rather than a
-        report. A preset may name tools this composition does not mount; an
-        absent name is not a reason to fail the child.
+        report. A preset or caller may name tools this composition does not
+        mount; an absent name is not a reason to fail the child, but it must
+        narrow the restriction. An empty intersection therefore means *no*
+        tool is visible, never no restriction: failing open would hand a child
+        that asked for a restricted set every bundle tool, shell included.
         """
         allowed = self._allowed_tools.get(subagent_id)
         if allowed is None:
             return
         available = {definition["name"] for definition in child_ctx.tools.definitions()}
         allow = sorted(allowed & available)
-        if not allow:
-            return
         child_scope = create_scope(child_ctx, agent)
+        # ``{"allow": []}`` is a valid restriction that denies every name.
         child_scope.ctx.tools.restrict({"allow": allow})
+        # Retained with the child for its lifetime, like the other per-child
+        # registries; the scope owns the restriction layer.
         self._child_scopes[subagent_id] = child_scope
 
     async def _resolve_workspace(
