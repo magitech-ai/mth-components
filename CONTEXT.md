@@ -111,7 +111,7 @@ _Avoid_: Child thread, sub-log, child session
 **Sub-Agent Triad** (historical):
 The former marketplace tools `invoke_subagent`, `send_message`, and
 `manage_subagents`. The dsh-named surface now lives in `magitech-harness` under
-ADR 0022; the old names remain as compatibility aliases there.
+ADR 0022; the dsh-named surface is now the only one (ADR 0024); the old names were retired.
 _Avoid_: Child toolset, delegation api
 
 ### Interception & Transformations
