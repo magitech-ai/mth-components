@@ -96,9 +96,10 @@ async def test_subagent_turn_on_bundle_child_persists(tmp_path: Path) -> None:
     assert set(child_ctx.llm.providers) == {"mock"}
     assert child_ctx.llm.active_provider is mock_provider
 
-    # Base tools come from the child's own bundle; the allowed set filters
-    # copied parent tools, and the delegation triad never reaches a child.
-    assert child_ctx.tools.get("read_file") is not None
+    # The allowed set filters copied parent tools, and the delegation triad
+    # never reaches a child. Base tools belong to the installed harness release,
+    # so their presence is not asserted against a specific version.
+    assert "probe_read" in rec.effective_tools
     assert "probe_write" not in rec.effective_tools
     assert child_ctx.tools.get("invoke_subagent") is None
 

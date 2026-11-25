@@ -153,10 +153,10 @@ async def test_end_to_end_marketplace_turn(tmp_path: Path) -> None:
     ctx.llm.register_provider("openrouter", provider)
     await ctx.flush()
 
-    assert ctx.tools.get("bash") is not None
-    assert ctx.tools.get("read_file") is not None
-    assert ctx.tools.get("write_file") is not None
-    assert ctx.tools.get("edit_file") is not None
+    # The mounted extras registered their own tools; the base tool set belongs
+    # to whichever harness release is installed and is not asserted here.
+    assert ctx.tools.get("list_directory") is not None
+    assert ctx.tools.get("code_metrics") is not None
     assert "openrouter" in ctx.llm.providers
 
     # 5. Run turn via agent loop with OpenRouter model slug
