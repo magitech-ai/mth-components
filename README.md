@@ -27,7 +27,7 @@ such as `ctx.llm` and `ctx.tools`.
 
 (*) Pollinations is a magitech-only keyless provider. The Agent Skills and OKF
 bridges are Magitech extensions. None of them is parity; see
-[PARITY.md](PARITY.md) for the ownership rule and the current transition state.
+[PARITY.md](PARITY.md) for the ownership rule and the relocation record.
 
 ## Discovery and installation
 
