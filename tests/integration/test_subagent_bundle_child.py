@@ -17,8 +17,8 @@ from magitech_harness import check_bundle_entries, create_harness
 from magitech_harness.llm.service import MockLlmAdapter, MockLLMProvider
 from magitech_harness.tools.schema import define_tool
 
-from mth_plugins.tools.subagent.manager import SubagentManager
-from mth_plugins.tools.subagent.types import SubagentSpec, SubagentState
+from mth_components.tools.subagent.manager import SubagentManager
+from mth_components.tools.subagent.types import SubagentSpec, SubagentState
 
 
 @pytest.mark.asyncio
@@ -69,7 +69,7 @@ async def test_subagent_turn_on_bundle_child_persists(tmp_path: Path) -> None:
         return ctx
 
     with patch(
-        "mth_plugins.tools.subagent.manager.create_harness",
+        "mth_components.tools.subagent.manager.create_harness",
         side_effect=_recording_create_harness,
     ):
         recs = await manager.invoke(

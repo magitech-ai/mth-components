@@ -431,7 +431,7 @@ dev = [
 ]
 
 [[package]]
-name = "mth-plugins"
+name = "mth-components"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [

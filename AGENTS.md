@@ -3,11 +3,11 @@
 ## Plugin Architecture & Invariants
 
 - **Repository Role & Marketplace Structure**:
-  - `mth-plugins` is the official extensible component marketplace for `magitech-harness`.
+  - `mth-components` is the official extensible component marketplace for `magitech-harness`.
   - Implements pluggable model providers (`openrouter-provider`, `pollinations-provider`), domain tools (`bash-tool`, `codeact-tool`, `read-file-tool`, `write-file-tool`, `edit-file-tool`), and guardrails (`truncation-guard`, `compaction-guard`).
   - Every component ships with a `manifest.json` describing its metadata, type, and entrypoints, registered in `index.json`.
 - **Component Integration**: Components mount into `animas` context through an `apply(ctx)` entry point and register capabilities on explicit services such as `ctx.llm` and `ctx.tools`. Tool definitions on `ctx.tools` use the canonical `magitech_harness.tools.schema.define_tool`; the legacy `Tool`/`tools.definition` module no longer exists.
-- **Component discovery** — catalog: `src/mth_plugins/index.py`; Agent Skills activation: `bridges/skills_registry`, `bridges/skills_filesystem`, `bridges/skills_loader`; OKF knowledge activation: `bridges/okf_registry`, `bridges/okf_filesystem`, `bridges/okf_loader`; safeguards: `docs/adr/0012-0014`.
+- **Component discovery** — catalog: `src/mth_components/index.py`; Agent Skills activation: `bridges/skills_registry`, `bridges/skills_filesystem`, `bridges/skills_loader`; OKF knowledge activation: `bridges/okf_registry`, `bridges/okf_filesystem`, `bridges/okf_loader`; safeguards: `docs/adr/0012-0014`.
 - **No Hardcoded Tunables**: Provider endpoints, default models, and token pressure thresholds must be configurable parameters, not hidden hardcoded constants.
 
 ## Shared Development Guidance

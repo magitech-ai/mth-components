@@ -1,12 +1,12 @@
 [project.entry-points."magitech.components"]
-mth-plugins = "mth_plugins.index:discover_installed"
+mth-components = "mth_components.index:discover_installed"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mth-plugins"
+name = "mth-components"
 version = "0.3.0"
 description = "Official portable components and marketplace catalog for Magitech Harness"
 readme = "README.md"
@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mth_plugins"]
+packages = ["src/mth_components"]
 
 [tool.uv.sources]
 animas = { path = "../animas", editable = true }

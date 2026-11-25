@@ -1,4 +1,4 @@
-"""Integration test between magitech-harness and mth-plugins."""
+"""Integration test between magitech-harness and mth-components."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from magitech_harness.llm.message import create_user_message
 from magitech_harness.llm.service import MockLlmAdapter
 from magitech_harness.session.events import EventType
 
-from mth_plugins.index import REPO_ROOT, scan_components
-from mth_plugins.providers.openrouter.provider import OpenRouterProvider
+from mth_components.index import REPO_ROOT, scan_components
+from mth_components.providers.openrouter.provider import OpenRouterProvider
 
 
 async def _run_agent_turn(ctx, prompt, *, session_id=None):

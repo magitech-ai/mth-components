@@ -13,7 +13,7 @@ Complex software engineering workflows require delegating focused objectives to 
 
 ## Decision
 
-We implement `subagent-plugin` in `mth-plugins`:
+We implement `subagent-plugin` in `mth-components`:
 1. **SubagentManager**:
    - Manages subagent instances running in-process via child `Context` and child `AgentLoopService`.
    - Records child execution transcripts into separate subsession logs (`~/.agents/sessions/subsessions/<id>.jsonl`).

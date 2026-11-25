@@ -10,7 +10,7 @@ The plugin marketplace needs to support diverse capability types (model provider
 ## Decision
 
 We establish an explicit manifest packaging format for all marketplace plugins:
-1. Every plugin is isolated in its own directory (e.g. `src/mth_plugins/providers/openrouter/`) containing a declarative `manifest.json`.
+1. Every plugin is isolated in its own directory (e.g. `src/mth_components/providers/openrouter/`) containing a declarative `manifest.json`.
 2. The manifest declares `name`, `version`, `description`, `types` (`Provider`, `Tool`, `Guard`), `author`, and `entrypoint`.
 3. The entrypoint defines an `apply(ctx)` callable that mounts the plugin's capabilities directly onto the host Animas context.
 4. A root `index.json` acts as the discoverable catalog, mapping plugin IDs to their manifest relative paths.

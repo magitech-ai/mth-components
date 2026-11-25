@@ -11,7 +11,7 @@ Agents accumulate extensive conversational histories stored across individual JS
 
 ## Decision
 
-We implement `session-search` and `session-title` plugins in `mth-plugins`:
+We implement `session-search` and `session-title` plugins in `mth-components`:
 1. **SQLite FTS5 Full-Text Search (`session-search`)**:
    - Persists a dedicated search database (`~/.agents/session_search.db`).
    - Maintains tables for `conversations` (metadata, total steps, file mtime) and `messages` (turn step, role, type, content, tool names).

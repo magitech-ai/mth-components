@@ -9,7 +9,7 @@ Complex agent tasks require decomposing work across delegated sub-agents (e.g. b
 
 ## Decision
 
-We package sub-agent orchestration as a first-class plugin in `mth-plugins`:
+We package sub-agent orchestration as a first-class plugin in `mth-components`:
 1. **Delegation Tool Triad**: Exposes three standardized tools to language models:
    - `invoke_subagent`: Spawns a sub-agent with a defined prompt, role description, workspace mode, and model tier.
    - `send_message`: Sends conversational follow-up instructions to an existing warm sub-agent by its conversation ID.
