@@ -1,0 +1,8 @@
+{
+  "name": "storage-json",
+  "version": "0.1.0",
+  "description": "JSON backend for the Magitech storage hub (single and per-record layouts)",
+  "entry_point": "component.py:apply",
+  "types": ["Storage"],
+  "enabled": true
+}
