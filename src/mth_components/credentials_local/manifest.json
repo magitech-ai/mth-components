@@ -1,0 +1,8 @@
+{
+  "name": "credentials-local",
+  "version": "0.1.0",
+  "description": "Core file-backed credentials provider with environment layering",
+  "entry_point": "component.py:apply",
+  "types": ["Guard"],
+  "enabled": true
+}
