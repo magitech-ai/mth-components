@@ -1,0 +1,8 @@
+{
+  "name": "storage-domain",
+  "version": "0.1.0",
+  "description": "Schema-validated, change-emitting domain data form for the Magitech storage hub",
+  "entry_point": "component.py:apply",
+  "types": ["Storage"],
+  "enabled": true
+}
