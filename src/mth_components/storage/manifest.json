@@ -1,0 +1,8 @@
+{
+  "name": "storage",
+  "version": "0.1.0",
+  "description": "Named storage backend registry and data-form hub for Magitech Harness",
+  "entry_point": "component.py:apply",
+  "types": ["Storage"],
+  "enabled": true
+}
