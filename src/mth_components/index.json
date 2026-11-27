@@ -406,6 +406,16 @@
         "Connector"
       ],
       "enabled": true
+    },
+    "attachment-local": {
+      "version": "0.1.0",
+      "description": "Content-addressed local attachment backend with normalized images, verbatim files and cached request images",
+      "path": "attachment_local",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Connector"
+      ],
+      "enabled": true
     }
   },
   "storages": {
