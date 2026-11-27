@@ -1,0 +1,8 @@
+{
+  "name": "plugin-manager",
+  "version": "0.1.0",
+  "description": "Core profile plugin and bundle registry with durable install, enable, disable and removal",
+  "entry_point": "component.py:apply",
+  "types": ["Connector"],
+  "enabled": true
+}

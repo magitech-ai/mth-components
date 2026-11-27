@@ -91,6 +91,16 @@
         "Tool"
       ],
       "enabled": true
+    },
+    "plugin-manager-tool": {
+      "version": "0.1.0",
+      "description": "Agent-facing profile plugin and bundle management tool",
+      "path": "tools/plugin_manager",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Tool"
+      ],
+      "enabled": true
     }
   },
   "guards": {
@@ -381,6 +391,16 @@
       "version": "0.1.0",
       "description": "Feedback-authorized OTLP session telemetry with on-demand capture and a bounded shutdown deadline",
       "path": "session_telemetry_otel",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Connector"
+      ],
+      "enabled": true
+    },
+    "plugin-manager": {
+      "version": "0.1.0",
+      "description": "Core profile plugin and bundle registry with durable install, enable, disable and removal",
+      "path": "plugin_manager",
       "entry_point": "component.py:apply",
       "types": [
         "Connector"
