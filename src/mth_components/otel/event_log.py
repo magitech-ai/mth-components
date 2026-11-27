@@ -10,6 +10,7 @@ with any Session-log channel.
 from __future__ import annotations
 
 import asyncio
+import copy
 import time
 from collections.abc import Callable, Mapping
 from typing import Any, TypedDict, cast
@@ -89,9 +90,11 @@ class EventLogReporter:
             "severityNumber": severity,
             "severityText": severity_text(severity),
         }
-        for key in ("eventName", "body", "timestamp", "attributes"):
+        for key in ("eventName", "body", "timestamp"):
             if key in record:
                 item[key] = record[key]
+        if "attributes" in record:
+            item["attributes"] = copy.deepcopy(dict(record["attributes"]))
         self._queue.append(item)
         if self._active is not None:
             return
