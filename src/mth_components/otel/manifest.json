@@ -1,0 +1,8 @@
+{
+  "name": "otel",
+  "version": "0.1.0",
+  "description": "Independent OTLP JSON reporting channels for ordinary events and byte-bounded session logs",
+  "entry_point": "component.py:apply",
+  "types": ["Connector"],
+  "enabled": true
+}
