@@ -319,6 +319,16 @@
         "Bridge"
       ],
       "enabled": true
+    },
+    "settings": {
+      "version": "0.1.0",
+      "description": "Schema-derived configuration forms with secret redaction and revision-checked edits",
+      "path": "settings",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Bridge"
+      ],
+      "enabled": true
     }
   },
   "sandboxes": {
