@@ -1,0 +1,8 @@
+{
+  "name": "authorization",
+  "version": "0.1.0",
+  "description": "Credential authorization flows with one attempt per key",
+  "entry_point": "component.py:apply",
+  "types": ["Guard"],
+  "enabled": true
+}
