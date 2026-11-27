@@ -1,0 +1,8 @@
+{
+  "name": "plugin-manager-tool",
+  "version": "0.1.0",
+  "description": "Agent-facing profile plugin and bundle management tool",
+  "entry_point": "component.py:apply",
+  "types": ["Tool"],
+  "enabled": true
+}
