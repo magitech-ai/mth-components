@@ -1,0 +1,8 @@
+{
+  "name": "hmr",
+  "version": "0.1.0",
+  "description": "Opt-in hot module replacement wrapper over the animas HMR core",
+  "entry_point": "component.py:apply",
+  "types": ["Bridge"],
+  "enabled": true
+}

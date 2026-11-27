@@ -289,6 +289,16 @@
         "Tool"
       ],
       "enabled": true
+    },
+    "hmr": {
+      "version": "0.1.0",
+      "description": "Opt-in hot module replacement wrapper over the animas HMR core",
+      "path": "hmr",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Bridge"
+      ],
+      "enabled": true
     }
   },
   "sandboxes": {
