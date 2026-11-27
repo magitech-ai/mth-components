@@ -1,0 +1,8 @@
+{
+  "name": "config-editor",
+  "version": "0.1.0",
+  "description": "Profile-owned configuration edits with atomic persistence",
+  "entry_point": "component.py:apply",
+  "types": ["Bridge"],
+  "enabled": true
+}
