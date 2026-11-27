@@ -1,0 +1,8 @@
+{
+  "name": "settings",
+  "version": "0.1.0",
+  "description": "Schema-derived configuration forms with secret redaction and revision-checked edits",
+  "entry_point": "component.py:apply",
+  "types": ["Bridge"],
+  "enabled": true
+}
