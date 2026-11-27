@@ -299,6 +299,16 @@
         "Bridge"
       ],
       "enabled": true
+    },
+    "config-editor": {
+      "version": "0.1.0",
+      "description": "Profile-owned configuration edits with atomic persistence",
+      "path": "config_editor",
+      "entry_point": "component.py:apply",
+      "types": [
+        "Bridge"
+      ],
+      "enabled": true
     }
   },
   "sandboxes": {
