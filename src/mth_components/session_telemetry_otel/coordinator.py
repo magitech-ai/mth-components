@@ -92,7 +92,7 @@ class SessionTelemetryCoordinator:
         data = copy.deepcopy(event.payload)
         envelope = {
             "id": event.id,
-            "sessionId": session.session_id,
+            "sessionId": session_id_of(session),
             "type": event.type,
             "time": event.timestamp,
             "surfaceOp": event.surface_op,
@@ -101,7 +101,7 @@ class SessionTelemetryCoordinator:
             "sourceEventSeqs": event.source_event_seqs,
         }
         record: SessionTelemetryRecord = {
-            "sourceEvent": {"sessionId": session.session_id, "envelope": envelope},
+            "sourceEvent": {"sessionId": session_id_of(session), "envelope": envelope},
             "channel": "ledger",
             "time": event.timestamp,
             "severity": severity_of(event),
@@ -113,6 +113,15 @@ class SessionTelemetryCoordinator:
         )
         self._backend.emit(redacted)
         _handoff[session] = event.seq
+
+
+def session_id_of(session: Any) -> str:
+    """Return the header-authoritative session id, with a store-id fallback."""
+    header = getattr(session, "header", None)
+    candidate = header.get("id") if isinstance(header, Mapping) else None
+    if isinstance(candidate, str) and candidate:
+        return candidate
+    return str(session.session_id)
 
 
 def severity_of(event: Any) -> SessionTelemetrySeverity:
@@ -135,7 +144,7 @@ def identity_of(session: Any, event: Any) -> dict[str, Any]:
     """Build the minimal envelope identity attributes for one event."""
     header: Mapping[str, Any] = session.header
     attributes: dict[str, Any] = {
-        "session.id": header.get("id", session.session_id),
+        "session.id": session_id_of(session),
         "session.format_version": header.get("version", 0),
         "event.type": event.type,
         "event.seq": event.seq,
@@ -156,7 +165,7 @@ def is_feedback(session: Any, event: Any) -> bool:
     if event.type == "feedback/record":
         return True
     if event.type in ("feedback/message-put", "feedback/message-delete"):
-        return bool(event.payload.get("sessionId") == session.session_id)
+        return bool(event.payload.get("sessionId") == session_id_of(session))
     return False
 
 

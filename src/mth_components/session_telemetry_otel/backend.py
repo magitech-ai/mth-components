@@ -47,6 +47,14 @@ NON_CANONICAL_EVENT_WARNING = (
 _SEVERITY = {"info": 9, "warn": 13, "error": 17}
 
 
+def _is_finite(value: int | float) -> bool:
+    """``Number.isFinite`` semantics, including oversized Python ints."""
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 class SessionTelemetryMode(StrEnum):
     FEEDBACK_ONLY = "FEEDBACK_ONLY"
     DISABLED = "DISABLED"
@@ -114,7 +122,7 @@ class OpenTelemetrySessionBackend(Service):
         if (
             isinstance(timeout, bool)
             or not isinstance(timeout, (int, float))
-            or not math.isfinite(timeout)
+            or not _is_finite(timeout)
             or timeout <= 0
             or timeout > MAX_TIMER_DELAY_MILLIS
         ):

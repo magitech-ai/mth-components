@@ -29,6 +29,7 @@ from mth_components.session_telemetry_otel.coordinator import (
     SessionTelemetryCoordinator,
     identity_of,
     is_feedback,
+    session_id_of,
     severity_of,
 )
 
@@ -479,3 +480,33 @@ async def test_duplicate_load_and_teardown_effect() -> None:
     backend2.shutdown = failing_shutdown  # type: ignore[method-assign]
     await ctx2.fiber.dispose()
     assert any("backend shutdown failed" in item for item in warnings)
+
+
+def test_header_authoritative_session_id() -> None:
+    event = _event(0, "feedback/message-put", sessionId="header-id")
+    session = Session(
+        "store-id",
+        seed=[event],
+        header={
+            "version": 4,
+            "id": "header-id",
+            "createdAt": 1800000000000,
+            "isSeeded": False,
+            "delegationDepth": 0,
+        },
+        inherited_event_count=0,
+        event_state="detached",
+    )
+    assert session_id_of(session) == "header-id"
+    assert session_id_of(type("S", (), {"session_id": "store-id"})()) == "store-id"
+    assert identity_of(session, event)["session.id"] == "header-id"
+    assert is_feedback(session, event)
+
+    mismatched = _event(0, "feedback/message-put", sessionId="store-id")
+    assert not is_feedback(session, mismatched)
+
+
+def test_oversized_timeout_is_value_error() -> None:
+    ctx = Context()
+    with pytest.raises(ValueError, match="shutdownTimeoutMillis"):
+        Backend(ctx, _config(shutdownTimeoutMillis=10**400))

@@ -751,3 +751,21 @@ def test_resolve_limits_integral_floats_and_nulls() -> None:
     with pytest.raises(ValueError, match=r"processor\.maxQueueSize"):
         resolve_session_log_limits({"processor": {"maxQueueSize": None}})
     assert severity_text(5) == "DEBUG" and severity_text(21) == "FATAL"
+
+
+@pytest.mark.asyncio
+async def test_event_attributes_are_snapshotted() -> None:
+    reporter = EventLogReporter(
+        _options("http://x/v1", processor={"scheduledDelayMillis": 10000})
+    )
+    exporter = _FakeExporter()
+    reporter._exporter = exporter  # type: ignore[assignment]
+    attributes = {"k": "original", "nested": {"v": 1}}
+    reporter.emit({"eventName": "e", "attributes": attributes})
+    attributes["k"] = "mutated"
+    attributes["nested"]["v"] = 2
+    await reporter.force_flush()
+    assert exporter.calls[0][0]["attributes"] == {
+        "k": "original",
+        "nested": {"v": 1},
+    }
