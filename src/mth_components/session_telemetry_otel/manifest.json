@@ -1,0 +1,8 @@
+{
+  "name": "session-telemetry-otel",
+  "version": "0.1.0",
+  "description": "Feedback-authorized OTLP session telemetry with on-demand capture and a bounded shutdown deadline",
+  "entry_point": "component.py:apply",
+  "types": ["Connector"],
+  "enabled": true
+}
