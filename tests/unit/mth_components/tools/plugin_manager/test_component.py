@@ -10,9 +10,10 @@ import pytest
 from animas import Context
 from magitech_harness import __version__
 from magitech_harness.tools.schema import ToolArgsError
-from magitech_harness.tools.service import ToolCallData, ToolResultData, ToolService
+from magitech_harness.tools.service import ToolService
 
 from mth_components.plugin_manager import PluginManager
+from mth_components.tools.plugin_manager import component as component_module
 from mth_components.tools.plugin_manager.component import (
     ACTIONS,
     _execute,
@@ -27,24 +28,49 @@ class _FakeSignal:
 
 class _Exec:
     signal = _FakeSignal()
+    agent = type("A", (), {"session": object()})()
+    call_id = "call-1"
+
+
+class _Result:
+    def __init__(self, is_error: bool, content: str) -> None:
+        self.is_error = is_error
+        self.content = content
+
+
+_CURRENT_CTX: Context | None = None
+
+
+@pytest.fixture(autouse=True)
+def _approved(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake(*_a: Any, **_k: Any) -> str:
+        return "allowed-once"
+
+    monkeypatch.setattr(component_module, "approve_escalation", fake)
 
 
 def _make_ctx(root: Path) -> tuple[Context, ToolService, PluginManager]:
+    global _CURRENT_CTX  # noqa: PLW0603
     ctx = Context()
     tools = ToolService(ctx)
     manager = PluginManager(ctx, {"root": str(root)})
+    ctx.provide("approval", object())
+    ctx.provide(
+        "sandboxPolicy",
+        type("P", (), {"resolve": lambda self, session: {"mode": "workspace-write"}})(),
+    )
     apply(ctx)
+    _CURRENT_CTX = ctx
     return ctx, tools, manager
 
 
-async def _call(tools: ToolService, action: str, **args: Any) -> ToolResultData:
-    return await tools.execute(
-        ToolCallData(
-            call_id="c_pm",
-            name="plugin_manager",
-            arguments={"action": action, **args},
-        )
-    )
+async def _call(tools: ToolService, action: str, **args: Any) -> _Result:
+    assert _CURRENT_CTX is not None
+    try:
+        content = await _execute(_CURRENT_CTX, {"action": action, **args}, _Exec())
+        return _Result(False, content)
+    except ToolArgsError as error:
+        return _Result(True, str(error))
 
 
 def test_next_step_tables() -> None:
@@ -99,7 +125,7 @@ async def test_tool_registration_and_lists(tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
-    manager.install_bundle(str(source))
+    await manager.install_bundle(str(source))
     listed = json.loads((await _call(tools, "list_bundles")).content)
     assert listed["total"] == 1 and listed["entries"][0]["name"] == "demo"
     page = json.loads((await _call(tools, "list_bundles", offset=0, limit=1)).content)
@@ -183,16 +209,63 @@ async def test_tool_guards(tmp_path: Path) -> None:
     ctx = Context()
     ToolService(ctx)
     apply(ctx)
-    result = await _call(ctx.tools, "list_plugins")
-    assert result.is_error is True
+    with pytest.raises(ToolArgsError, match="approval service"):
+        await _execute(ctx, {"action": "list_plugins"}, _Exec())
+
+    approved_ctx = Context()
+    ToolService(approved_ctx)
+    apply(approved_ctx)
+    approved_ctx.provide("approval", object())
+    with pytest.raises(ToolArgsError, match="not mounted"):
+        await _execute(approved_ctx, {"action": "list_plugins"}, _Exec())
 
     _manager_ctx, tools, _manager = _make_ctx(tmp_path)
     definition = tools.get("plugin_manager")
     assert definition is not None
     aborted = type("S", (), {"aborted": True})()
+    with pytest.raises(ToolArgsError, match="cancelled"):
+        await _execute(
+            _manager_ctx,
+            {"action": "list_plugins"},
+            type("E", (), {"agent": _Exec.agent, "signal": aborted})(),
+        )
     with pytest.raises(ToolArgsError):
         await definition["execute"](
             {"action": "list_plugins"}, type("E", (), {"signal": aborted})()
         )
     with pytest.raises(ToolArgsError):
         await _execute(_manager_ctx, {"action": "not-an-action"}, _Exec())
+
+
+@pytest.mark.asyncio
+async def test_escalation_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    called: list[dict[str, Any]] = []
+
+    async def fake_escalation(request: dict[str, Any], approval: dict[str, Any]) -> str:
+        called.append(request)
+        return "allowed-once"
+
+    monkeypatch.setattr(component_module, "approve_escalation", fake_escalation)
+    ctx = Context()
+    ToolService(ctx)
+    PluginManager(ctx, {"root": str(tmp_path)})
+    apply(ctx)
+    ctx.provide("approval", object())
+    ctx.provide(
+        "sandboxPolicy",
+        type("P", (), {"resolve": lambda self, session: {"mode": "workspace-write"}})(),
+    )
+    exec_ctx = type(
+        "E",
+        (),
+        {
+            "agent": type("A", (), {"session": object()})(),
+            "call_id": "call-1",
+            "callId": "call-1",
+            "signal": _Exec.signal,
+        },
+    )()
+    await component_module._execute(ctx, {"action": "list_plugins"}, exec_ctx)
+    assert called and called[0]["requestedMode"] == "danger-full-access"
