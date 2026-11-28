@@ -83,6 +83,17 @@ class InvalidInstallSpecError(Exception):
         self.reason = reason
 
 
+class RemoteError(Exception):
+    """A typed remote-facing failure with a stable code and details."""
+
+    name = "RemoteError"
+
+    def __init__(self, code: str, message: str, **details: Any) -> None:
+        super().__init__(message)
+        self.code = code
+        self.details = details
+
+
 class ManagementFailure(Exception):  # noqa: N818
     """An expected refusal reported through a ChangeResult rather than thrown."""
 
@@ -223,6 +234,7 @@ __all__ = [
     "PluginInfo",
     "PluginManagerError",
     "PluginRegistries",
+    "RemoteError",
     "management_error",
     "read_profile_state",
 ]

@@ -2,9 +2,8 @@
 
 Ports ``packages/boot/plugin-manager/src/tools.ts``: one ``plugin_manager``
 tool whose ``application`` field is authoritative and whose ``nextStep`` tells
-the model what to do for every non-applied outcome. The pinned
-``danger-full-access`` escalation gate is not mounted here (the harness owns
-its own approval surface); see the PARITY row-1 gap.
+the model what to do for every non-applied outcome. Every action escalates
+to ``danger-full-access`` through the harness approval service.
 """
 
 from __future__ import annotations
@@ -14,6 +13,7 @@ from typing import Any
 
 from animas import Context
 from magitech_harness import __version__
+from magitech_harness.sandbox.escalation import approve_escalation
 from magitech_harness.tools.schema import ToolArgsError, define_tool
 
 ERROR_STEPS = {
@@ -164,6 +164,37 @@ async def _execute(  # noqa: PLR0912
     ctx: Context, args: dict[str, Any], exec_ctx: Any
 ) -> str:
     manager = ctx.get("pluginManager", None, strict=False)
+    approver = ctx.get("approval", None, strict=False)
+    agent = getattr(exec_ctx, "agent", None)
+    if approver is None or agent is None:
+        raise ToolArgsError(
+            ["plugin management requires an approval service and an agent"]
+        )
+    policy_service = ctx.get("sandboxPolicy", None, strict=False)
+    mode = (
+        str(policy_service.resolve(agent.session).get("mode", "workspace-write"))
+        if policy_service is not None
+        else "workspace-write"
+    )
+    await approve_escalation(
+        {
+            "requestedMode": "danger-full-access",
+            "effectiveMode": mode,
+            "subject": "plugin management operation",
+            "justification": (
+                f"plugin_manager {json.dumps(args)}. "
+                "Profile changes persist across sessions."
+            ),
+        },
+        {
+            "approver": approver,
+            "agent": agent,
+            "callId": getattr(exec_ctx, "call_id", None)
+            or getattr(exec_ctx, "callId", None),
+            "toolName": "plugin_manager",
+            "signal": getattr(exec_ctx, "signal", None),
+        },
+    )
     if manager is None:
         raise ToolArgsError(["pluginManager is not mounted on this context"])
     signal = getattr(exec_ctx, "signal", None)
@@ -189,7 +220,7 @@ async def _execute(  # noqa: PLR0912
             raise ToolArgsError([f"{name} is required" for name in missing])
         return json.dumps(
             with_next_step(
-                manager.set_version_exemption(
+                await manager.set_version_exemption(
                     args["target"],
                     args["runtimeVersion"],
                     args["enabled"],
@@ -230,9 +261,9 @@ async def _execute(  # noqa: PLR0912
         if args.get("target") is None or args.get("enabled") is None:
             raise ToolArgsError(["target and enabled are required"])
         result = (
-            manager.set_plugin_enabled(args["target"], args["enabled"])
+            await manager.set_plugin_enabled(args["target"], args["enabled"])
             if action == "set_plugin"
-            else manager.set_bundle_enabled(args["target"], args["enabled"])
+            else await manager.set_bundle_enabled(args["target"], args["enabled"])
         )
         return json.dumps(with_next_step(result))
     if action == "install_bundle":
@@ -244,11 +275,11 @@ async def _execute(  # noqa: PLR0912
             if key in args
         }
         return json.dumps(
-            with_next_step(manager.install_bundle(args["target"], options))
+            with_next_step(await manager.install_bundle(args["target"], options))
         )
     if args.get("target") is None:
         raise ToolArgsError(["target bundle name is required"])
-    return json.dumps(with_next_step(manager.remove_bundle(args["target"])))
+    return json.dumps(with_next_step(await manager.remove_bundle(args["target"])))
 
 
 def apply(ctx: Context, **kwargs: Any) -> None:
@@ -297,7 +328,7 @@ def apply(ctx: Context, **kwargs: Any) -> None:
     )
 
 
-apply.inject = ["tools", "pluginManager"]  # type: ignore[attr-defined]
+apply.inject = ["tools", "pluginManager", "sandboxPolicy"]  # type: ignore[attr-defined]
 
 __all__ = [
     "ACTIONS",

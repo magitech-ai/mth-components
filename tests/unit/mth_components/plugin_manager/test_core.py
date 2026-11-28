@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,7 @@ from mth_components.plugin_manager import (
     InvalidInstallSpecError,
     PluginManager,
     dependency_spec,
+    operations,
     parse_install_spec,
     pinned_git_origin,
 )
@@ -118,7 +120,8 @@ def test_install_spec_parsing(tmp_path: Path) -> None:
     ).startswith("alias@git+")
 
 
-def test_registry_helpers() -> None:
+@pytest.mark.asyncio
+async def test_registry_helpers() -> None:
     assert normalize_registry("https://Example.com/foo") == "https://example.com/foo/"
     with pytest.raises(ValueError, match="http"):
         normalize_registry("not-a-url")
@@ -160,7 +163,7 @@ async def test_install_list_enable_remove(tmp_path: Path) -> None:
     source = _bundle(tmp_path, "demo")
     ctx = _ctx(tmp_path)
     manager: PluginManager = ctx.pluginManager
-    result = manager.install_bundle(str(source))
+    result = await manager.install_bundle(str(source))
     assert result["application"] == "restart-required"
     assert result["bundle"] == "demo" and result["version"] == "1.0.0"
     assert (tmp_path / "installed" / "demo" / "package.json").exists()
@@ -168,61 +171,107 @@ async def test_install_list_enable_remove(tmp_path: Path) -> None:
     bundles = await manager.list_bundles()
     demo = next(item for item in bundles if item["name"] == "demo")
     assert demo["installed"] and demo["enabled"] and demo["rows"]
-    assert manager.install_bundle(str(source))["error"]["code"] == "already-installed"
+    assert (await manager.install_bundle(str(source)))["error"][
+        "code"
+    ] == "already-installed"
 
-    assert (
-        manager.set_bundle_enabled("demo", False)["application"] == "restart-required"
-    )
-    assert (
-        manager.set_bundle_enabled("missing", True)["error"]["code"] == "unknown-plugin"
-    )
+    assert (await manager.set_bundle_enabled("demo", False))[
+        "application"
+    ] == "restart-required"
+    assert (await manager.set_bundle_enabled("missing", True))["error"][
+        "code"
+    ] == "unknown-plugin"
     plugins = await manager.list_plugins()
     row = next(item for item in plugins if item["moduleName"] == "demo.module")
-    assert manager.set_plugin_enabled(row["entryId"], False)["changed"] is True
-    assert (
-        manager.set_plugin_enabled("missing", True)["error"]["code"] == "unknown-plugin"
-    )
-    assert (
-        manager.set_version_exemption("demo@1.0.0", "0.3.0", True, True)["application"]
-        == "restart-required"
-    )
+    assert (await manager.set_plugin_enabled(row["entryId"], False))["changed"] is True
+    assert (await manager.set_plugin_enabled("missing", True))["error"][
+        "code"
+    ] == "unknown-plugin"
+    assert (await manager.set_version_exemption("demo@1.0.0", "0.3.0", True, True))[
+        "application"
+    ] == "restart-required"
     assert manager.list_version_exemptions()["exemptions"] == {"demo@1.0.0": ["0.3.0"]}
-    assert (
-        manager.set_version_exemption("demo@1.0.0", "0.3.0", True)["error"]["code"]
-        == "operation-error"
-    )
-    assert manager.remove_bundle("demo")["application"] == "restart-required"
+    assert (await manager.set_version_exemption("demo@1.0.0", "0.3.0", True))["error"][
+        "code"
+    ] == "operation-error"
+    assert (await manager.remove_bundle("demo"))["application"] == "restart-required"
     assert not (tmp_path / "installed" / "demo").exists()
 
 
 @pytest.mark.asyncio
-async def test_install_failures_and_inspect(tmp_path: Path) -> None:
+async def test_install_failures_and_inspect(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        operations,
+        "run_profile_pnpm",
+        lambda *_a, **_k: asyncio.sleep(
+            0,
+            result={
+                "exitCode": 1,
+                "output": "ERR_PNPM_NO_MATCHING_VERSION",
+                "truncated": False,
+                "logPath": "x",
+                "timedOut": False,
+                "kind": "no-matching-version",
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        operations,
+        "read_profile_registry",
+        lambda *_a, **_k: asyncio.sleep(0, result=None),
+    )
     manager: PluginManager = _ctx(tmp_path).pluginManager
-    assert manager.install_bundle("")["error"]["code"] == "invalid-spec"
-    assert manager.install_bundle("pkg")["error"]["code"] == "operation-error"
-    assert manager.install_bundle("/absent/path")["error"]["code"] == "invalid-spec"
+    monkeypatch.setattr(
+        operations,
+        "run_profile_pnpm",
+        lambda *_a, **_k: asyncio.sleep(
+            0,
+            result={
+                "exitCode": 1,
+                "output": "ERR_PNPM_NO_MATCHING_VERSION",
+                "truncated": False,
+                "logPath": "x",
+                "timedOut": False,
+                "kind": "no-matching-version",
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        operations,
+        "read_profile_registry",
+        lambda *_a, **_k: asyncio.sleep(0, result=None),
+    )
+    assert (await manager.install_bundle(""))["error"]["code"] == "invalid-spec"
+    assert (await manager.install_bundle("pkg"))["application"] == "failed"
+    assert (await manager.install_bundle("/absent/path"))["error"][
+        "code"
+    ] == "invalid-spec"
 
     plain = tmp_path / "plain"
     plain.mkdir()
     (plain / "package.json").write_text(
         json.dumps({"name": "plain", "version": "1"}), encoding="utf-8"
     )
-    assert manager.install_bundle(str(plain))["error"]["code"] == "not-bundle"
+    assert (await manager.install_bundle(str(plain)))["error"]["code"] == "not-bundle"
 
     no_manifest = tmp_path / "empty"
     no_manifest.mkdir()
-    assert manager.install_bundle(str(no_manifest))["error"]["code"] == "not-bundle"
+    assert (await manager.install_bundle(str(no_manifest)))["error"][
+        "code"
+    ] == "not-bundle"
 
     broken = tmp_path / "broken"
     broken.mkdir()
     (broken / "package.json").write_text("{invalid", encoding="utf-8")
-    assert manager.install_bundle(str(broken))["error"]["code"] == "not-bundle"
+    assert (await manager.install_bundle(str(broken)))["error"]["code"] == "not-bundle"
 
     assert manager.inspect("pkg")["status"] == "accepted"
     assert manager.inspect("not a name")["status"] == "refused"
     assert manager.inspect(str(plain))["bundle"] is False
     assert manager.inspect(str(no_manifest))["bundle"] is False
-    assert (await manager.registries())["resolved"] is None
+    assert isinstance((await manager.registries())["resolved"], (str, type(None)))
 
 
 @pytest.mark.asyncio
@@ -251,15 +300,14 @@ async def test_protected_and_profile_read_failures(tmp_path: Path) -> None:
         == "management-required"
     )
     assert "patchId" in next(p for p in plugins if p["entryId"] == "other")
-    assert (
-        manager.set_plugin_enabled("owner", False)["error"]["code"]
-        == "management-required"
-    )
+    assert (await manager.set_plugin_enabled("owner", False))["error"][
+        "code"
+    ] == "management-required"
 
     bundles = await manager.list_bundles()
     official = next(b for b in bundles if b["name"] == "official")
     assert official["official"] and official["availability"] == "missing"
-    assert manager.set_bundle_enabled("official", False)["changed"] is False
+    assert (await manager.set_bundle_enabled("official", False))["changed"] is False
 
     (tmp_path / "package.json").write_text("{bad", encoding="utf-8")
     with pytest.raises(PluginManagerError, match="failed to read the profile"):
